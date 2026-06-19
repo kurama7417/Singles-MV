@@ -1,0 +1,735 @@
+import React, { useState } from "react";
+import {
+  Heart, Lock, MessageCircle, Wallet, User, Camera, ChevronLeft, Check,
+  Send, Phone, Briefcase, MapPin, X, Cigarette, Wine, PartyPopper, Copy, Upload, Clock, ShieldCheck, AlertCircle
+} from "lucide-react";
+
+// ---------------------------------------------------------------- tokens
+const C = {
+  bg: "#0A1F1C",
+  surface: "#102A26",
+  surfaceAlt: "#15332E",
+  gold: "#D4A24C",
+  teal: "#2BA89A",
+  text: "#F2EFE6",
+  muted: "#8FA39E",
+  danger: "#C75C4D",
+  line: "#1E3D37",
+};
+const serif = "'Fraunces', serif";
+const mono = "'IBM Plex Mono', monospace";
+
+// ---------------------------------------------------------------- logo
+function LogoMark({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <rect width="64" height="64" rx="16" fill={C.surface} />
+      <circle cx="32" cy="32" r="22" fill="none" stroke={C.teal} strokeWidth="2" strokeDasharray="3 4" />
+      <path
+        d="M32,46 C20,38 12,29 12,20 C12,12 19,7 26,11 C29,13 31,16 32,19 C33,16 35,13 38,11 C45,7 52,12 52,20 C52,29 44,38 32,46 Z"
+        fill={C.gold}
+        transform="translate(0,3)"
+      />
+    </svg>
+  );
+}
+function Wordmark({ size = 22 }) {
+  return (
+    <span style={{ fontFamily: serif, fontWeight: 600, fontSize: size, color: C.text, letterSpacing: "0.01em" }}>
+      Singles <span style={{ color: C.gold }}>MV</span>
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------- atoms
+function Pill({ children, tone = "muted" }) {
+  const colors = {
+    muted: { bg: C.surfaceAlt, fg: C.muted },
+    gold: { bg: "rgba(212,162,76,0.15)", fg: C.gold },
+    teal: { bg: "rgba(43,168,154,0.15)", fg: C.teal },
+  }[tone];
+  return (
+    <span
+      className="px-2.5 py-1 rounded-full text-xs font-medium"
+      style={{ background: colors.bg, color: colors.fg }}
+    >
+      {children}
+    </span>
+  );
+}
+function SectionLabel({ children }) {
+  return (
+    <div className="text-xs mb-2" style={{ color: C.muted, letterSpacing: "0.04em" }}>
+      {children.toUpperCase()}
+    </div>
+  );
+}
+function Avatar({ name, color, size = 48, locked }) {
+  return (
+    <div
+      className="relative rounded-full flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, background: color, color: "#1A1208", fontWeight: 700 }}
+    >
+      {name[0]}
+      {locked && (
+        <div
+          className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center"
+          style={{ width: size * 0.42, height: size * 0.42, background: C.surface, border: `1px solid ${C.line}` }}
+        >
+          <Lock size={size * 0.22} style={{ color: C.muted }} />
+        </div>
+      )}
+    </div>
+  );
+}
+function Button({ children, onClick, variant = "primary", disabled, full = true }) {
+  const styles = {
+    primary: { background: C.gold, color: "#1A1208" },
+    ghost: { background: C.surfaceAlt, color: C.text, border: `1px solid ${C.line}` },
+  }[variant];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${full ? "w-full" : ""} py-3 rounded-xl text-sm font-semibold transition-opacity`}
+      style={{ ...styles, opacity: disabled ? 0.5 : 1 }}
+    >
+      {children}
+    </button>
+  );
+}
+function BackHeader({ title, onBack }) {
+  return (
+    <div className="flex items-center gap-2 mb-5">
+      <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
+        <ChevronLeft size={20} style={{ color: C.muted }} />
+      </button>
+      <span style={{ color: C.text, fontWeight: 600 }}>{title}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- mock data
+const PALETTE = [C.gold, C.teal, "#C75C4D", "#8FA39E"];
+const USERS = [
+  { id: 1, name: "Aishath", age: 26, island: "Malé", work: "Teacher", gender: "Woman", lookingFor: "Men",
+    status: "Single", intent: "Serious", bio: "Quiet evenings, good food, and someone who follows through on plans.",
+    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[0] },
+  { id: 2, name: "Ibrahim", age: 29, island: "Hulhumalé", work: "Marine Engineer", gender: "Man", lookingFor: "Women",
+    status: "Single", intent: "Dating", bio: "Out on the water most weekends. Looking for someone to drag along.",
+    lifestyle: { smoke: "No", drink: "Prefer not to say", party: "No" }, unlocked: true, color: PALETTE[1] },
+  { id: 3, name: "Fathimath", age: 24, island: "Addu City", work: "Nurse", gender: "Woman", lookingFor: "Men",
+    status: "Divorced", intent: "Casual", bio: "Just moved back from Malé. Taking things slow and easy.",
+    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[2] },
+  { id: 4, name: "Hassan", age: 31, island: "Malé", work: "Business owner", gender: "Man", lookingFor: "Women",
+    status: "Single", intent: "Marriage-minded", bio: "Ready to settle down. Family means everything to me.",
+    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[3] },
+];
+const LIFESTYLE_FIELDS = [
+  { key: "smoke", label: "Smokes", icon: Cigarette },
+  { key: "drink", label: "Drinks alcohol", icon: Wine },
+  { key: "party", label: "Parties / substances", icon: PartyPopper },
+];
+const INTENT_OPTIONS = ["Casual", "Dating", "Serious", "Marriage-minded"];
+const STATUS_OPTIONS = ["Single", "Divorced", "Widowed", "Separated"];
+const ANSWER_OPTIONS = ["Yes", "No", "Prefer not to say"];
+
+const TOKEN_PACKS = [
+  { id: "t50", label: "Starter", mvr: 50, tokens: 100 },
+  { id: "t100", label: "Basic", mvr: 100, tokens: 200 },
+  { id: "t200", label: "Plus", mvr: 200, tokens: 400 },
+  { id: "t500", label: "Power", mvr: 500, tokens: 1000 },
+];
+const SUB_TIERS = [
+  { id: "s300", label: "Unlimited", mvr: 300, period: true, desc: "Unlimited chat unlocks" },
+  { id: "s500", label: "Unlimited+", mvr: 500, period: true, desc: "+ super-likes, who-liked-you, 2 boosts/mo" },
+];
+const BANK = { bankName: "Bank of Maldives (BML)", accountName: "[Your Business Name]", accountNumber: "0000 0000 0000" };
+function genRef() {
+  return `MV-${Date.now().toString(36).toUpperCase().slice(-4)}${Math.random().toString(36).toUpperCase().slice(2, 5)}`;
+}
+
+// ---------------------------------------------------------------- bottom nav
+function BottomNav({ tab, setTab }) {
+  const items = [
+    { id: "discover", icon: Heart, label: "Discover" },
+    { id: "chats", icon: MessageCircle, label: "Chats" },
+    { id: "wallet", icon: Wallet, label: "Wallet" },
+    { id: "profile", icon: User, label: "Profile" },
+  ];
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 flex justify-center"
+      style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}
+    >
+      <div className="w-full max-w-md flex">
+        {items.map((it) => {
+          const active = tab === it.id;
+          const Icon = it.icon;
+          return (
+            <button
+              key={it.id}
+              onClick={() => setTab(it.id)}
+              className="flex-1 flex flex-col items-center gap-1 py-3"
+            >
+              <Icon size={20} style={{ color: active ? C.gold : C.muted }} />
+              <span style={{ fontSize: 11, color: active ? C.gold : C.muted }}>{it.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- splash
+function Splash({ onContinue }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: C.bg }}>
+      <LogoMark size={88} />
+      <div className="mt-5"><Wordmark size={28} /></div>
+      <p className="mt-2 text-sm" style={{ color: C.muted }}>Made for the Maldives</p>
+      <div className="mt-4 px-3 py-1.5 rounded-full text-xs" style={{ background: "rgba(212,162,76,0.15)", color: C.gold }}>
+        Sign up free — get 30 tokens, enough to unlock your first chat
+      </div>
+      <div className="w-full max-w-xs mt-8">
+        <Button onClick={onContinue}>Get started</Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- discover
+function DiscoverCard({ u, onOpen }) {
+  return (
+    <button
+      onClick={() => onOpen(u)}
+      className="w-full flex items-center gap-3 p-4 rounded-2xl text-left"
+      style={{ background: C.surface, border: `1px solid ${C.line}` }}
+    >
+      <Avatar name={u.name} color={u.color} size={52} />
+      <div className="flex-1 min-w-0">
+        <div style={{ color: C.text, fontWeight: 600 }}>{u.name}, {u.age}</div>
+        <div className="flex items-center gap-1 text-xs" style={{ color: C.muted }}>
+          <MapPin size={12} /> {u.island} · {u.work}
+        </div>
+        <div className="mt-1.5"><Pill tone="teal">{u.intent}</Pill></div>
+      </div>
+      {u.unlocked ? (
+        <Pill tone="teal"><span className="flex items-center gap-1"><Check size={11}/> Chat open</span></Pill>
+      ) : (
+        <Pill tone="muted"><span className="flex items-center gap-1"><Lock size={11}/> Locked</span></Pill>
+      )}
+    </button>
+  );
+}
+
+function ProfileSheet({ u, tokenBalance, onClose, onUnlock, onMessage }) {
+  return (
+    <div className="fixed inset-0 z-20 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="w-full max-w-md rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto" style={{ background: C.bg }}>
+        <div className="flex justify-end mb-2">
+          <button onClick={onClose}><X size={20} style={{ color: C.muted }} /></button>
+        </div>
+        <div className="flex flex-col items-center mb-4">
+          <Avatar name={u.name} color={u.color} size={84} />
+          <div className="mt-3 text-xl" style={{ color: C.text, fontFamily: serif, fontWeight: 600 }}>
+            {u.name}, {u.age}
+          </div>
+          <div className="flex items-center gap-1 text-sm" style={{ color: C.muted }}>
+            <MapPin size={13} /> {u.island}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Pill tone="gold">{u.intent}</Pill>
+            <Pill tone="muted">{u.status}</Pill>
+          </div>
+        </div>
+
+        <SectionLabel>About</SectionLabel>
+        <p className="text-sm mb-4" style={{ color: C.text }}>{u.bio}</p>
+        <div className="flex items-center gap-2 text-sm mb-5" style={{ color: C.muted }}>
+          <Briefcase size={14} /> {u.work}
+        </div>
+
+        <SectionLabel>Lifestyle</SectionLabel>
+        <div className="flex flex-col gap-2 mb-6">
+          {LIFESTYLE_FIELDS.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.key} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.surface }}>
+                <span className="flex items-center gap-2 text-sm" style={{ color: C.muted }}>
+                  <Icon size={14} /> {f.label}
+                </span>
+                <span className="text-sm" style={{ color: C.text }}>{u.lifestyle[f.key]}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {u.unlocked ? (
+          <Button onClick={() => onMessage(u)}>Message {u.name}</Button>
+        ) : tokenBalance >= 30 ? (
+          <Button onClick={() => onUnlock(u)}>Unlock chat · 30 tokens</Button>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-2 text-sm" style={{ color: C.danger }}>
+              <AlertCircle size={14} /> Not enough tokens
+            </div>
+            <Button onClick={() => onUnlock(u, true)} variant="ghost">Top up wallet</Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- chat
+function ChatThread({ u, onBack }) {
+  const [messages, setMessages] = useState(
+    u.id === 2
+      ? [
+          { from: "them", text: "Hey! Saw you're into diving too 🤿" },
+          { from: "me", text: "Yes! Are you based in Malé?" },
+          { from: "them", text: "Hulhumalé side, but happy to meet halfway" },
+        ]
+      : [{ from: "them", text: `Hi, thanks for unlocking the chat!` }]
+  );
+  const [draft, setDraft] = useState("");
+  const [meAgreed, setMeAgreed] = useState(false);
+  const [themAgreed, setThemAgreed] = useState(false);
+  const bothAgreed = meAgreed && themAgreed;
+
+  const send = () => {
+    if (!draft.trim()) return;
+    setMessages([...messages, { from: "me", text: draft.trim() }]);
+    setDraft("");
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col px-4 pt-6 pb-24" style={{ background: C.bg }}>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={onBack}><ChevronLeft size={20} style={{ color: C.muted }} /></button>
+        <Avatar name={u.name} color={u.color} size={36} />
+        <span style={{ color: C.text, fontWeight: 600 }}>{u.name}</span>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-2 mb-4">
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className="px-3 py-2 rounded-2xl text-sm max-w-[75%]"
+            style={{
+              alignSelf: m.from === "me" ? "flex-end" : "flex-start",
+              background: m.from === "me" ? C.gold : C.surface,
+              color: m.from === "me" ? "#1A1208" : C.text,
+            }}
+          >
+            {m.text}
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <SectionLabel>Share contact on WhatsApp</SectionLabel>
+        <p className="text-xs mb-3" style={{ color: C.muted }}>
+          Both of you need to agree before numbers are shared.
+        </p>
+        <div className="flex flex-col gap-2 mb-3">
+          <button
+            onClick={() => setMeAgreed(!meAgreed)}
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-sm"
+            style={{ background: C.surfaceAlt }}
+          >
+            <span style={{ color: C.text }}>You</span>
+            {meAgreed ? <Check size={16} style={{ color: C.teal }} /> : <span style={{ color: C.muted, fontSize: 12 }}>Tap to agree</span>}
+          </button>
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl text-sm" style={{ background: C.surfaceAlt }}>
+            <span style={{ color: C.text }}>{u.name}</span>
+            {themAgreed ? <Check size={16} style={{ color: C.teal }} /> : <span style={{ color: C.muted, fontSize: 12 }}>Waiting…</span>}
+          </div>
+        </div>
+        {!themAgreed && (
+          <button onClick={() => setThemAgreed(true)} className="text-xs underline" style={{ color: C.muted }}>
+            (Demo only — simulate {u.name} agreeing)
+          </button>
+        )}
+        {bothAgreed && (
+          <a
+            href="https://wa.me/9601234567"
+            className="mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: C.teal, color: "#0A1F1C" }}
+          >
+            <Phone size={15} /> Open WhatsApp
+          </a>
+        )}
+      </div>
+
+      <div className="fixed bottom-16 left-0 right-0 flex justify-center px-4">
+        <div className="w-full max-w-md flex gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Message"
+            className="flex-1 px-4 py-3 rounded-xl text-sm"
+            style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }}
+          />
+          <button onClick={send} className="px-4 rounded-xl" style={{ background: C.gold }}>
+            <Send size={18} style={{ color: "#1A1208" }} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- checkout (wallet)
+function CopyField({ value, monoFont = true }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(value); } catch (e) {}
+        setCopied(true); setTimeout(() => setCopied(false), 1500);
+      }}
+      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
+      style={{ background: C.surfaceAlt, border: `1px solid ${C.line}` }}
+    >
+      <span style={{ color: C.text, fontFamily: monoFont ? mono : undefined }}>{value}</span>
+      {copied ? <Check size={18} style={{ color: C.teal }} /> : <Copy size={18} style={{ color: C.muted }} />}
+    </button>
+  );
+}
+
+function Checkout({ onBack, onPaid }) {
+  const [step, setStep] = useState("select");
+  const [tab, setTab] = useState("tokens");
+  const [plan, setPlan] = useState(null);
+  const [refCode, setRefCode] = useState("");
+  const [txId, setTxId] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [error, setError] = useState("");
+  const plans = tab === "tokens" ? TOKEN_PACKS : SUB_TIERS;
+
+  const choose = (p) => { setPlan(p); setRefCode(genRef()); setStep("pay"); };
+  const submit = () => {
+    if (!txId.trim() && !fileName) { setError("Add a transaction ID or screenshot."); return; }
+    setStep("submitted");
+  };
+
+  if (step === "submitted") {
+    return (
+      <div className="px-4 pt-6 pb-24 flex flex-col items-center text-center">
+        <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.surfaceAlt, border: `1px solid ${C.teal}` }}>
+          <Clock size={24} style={{ color: C.teal }} />
+        </div>
+        <div style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Pending review</div>
+        <p className="text-sm mt-2 mb-1" style={{ color: C.muted }}>
+          Reference <span style={{ color: C.text, fontFamily: mono }}>{refCode}</span>
+        </p>
+        <p className="text-sm mb-6 max-w-xs" style={{ color: C.muted }}>
+          We'll credit your {plan.tokens ? "tokens" : "subscription"} once the transfer is verified — usually within 24 hours.
+        </p>
+        <Button onClick={onBack} variant="ghost">Back to wallet</Button>
+      </div>
+    );
+  }
+
+  if (step === "pay") {
+    return (
+      <div className="px-4 pt-6 pb-24">
+        <BackHeader title={`Transfer ${plan.mvr} MVR`} onBack={() => setStep("select")} />
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+          <SectionLabel>Send to</SectionLabel>
+          <div className="flex flex-col gap-2">
+            <CopyField value={BANK.bankName} monoFont={false} />
+            <CopyField value={BANK.accountName} monoFont={false} />
+            <CopyField value={BANK.accountNumber} />
+          </div>
+        </div>
+        <div className="rounded-2xl mb-5 overflow-hidden" style={{ border: `1px dashed ${C.gold}`, background: C.surfaceAlt }}>
+          <div className="px-4 pt-3"><SectionLabel>Put this in your transfer note</SectionLabel></div>
+          <div className="px-4 pb-1"><CopyField value={refCode} /></div>
+          <div className="px-4 pb-3 text-xs" style={{ color: C.muted }}>Without this code, verification takes longer.</div>
+        </div>
+        <div className="rounded-2xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+          <div className="text-xs mb-2" style={{ color: C.muted }}>BML transaction ID</div>
+          <input
+            value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="e.g. TX2026061234567"
+            className="w-full px-3 py-2 rounded-lg text-sm mb-3"
+            style={{ background: C.surfaceAlt, color: C.text, border: `1px solid ${C.line}` }}
+          />
+          <div className="text-xs mb-2" style={{ color: C.muted }}>Or upload a screenshot</div>
+          <label className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm cursor-pointer" style={{ background: C.surfaceAlt, border: `1px dashed ${C.line}`, color: C.muted }}>
+            <Upload size={16} /> {fileName || "Choose file"}
+            <input type="file" accept="image/*" onChange={(e) => setFileName(e.target.files?.[0]?.name || "")} className="hidden" />
+          </label>
+        </div>
+        {error && <div className="flex items-center gap-2 mb-3 text-sm" style={{ color: C.danger }}><AlertCircle size={14} /> {error}</div>}
+        <Button onClick={submit}>I've sent the transfer</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pt-6 pb-24">
+      <BackHeader title="Top up" onBack={onBack} />
+      <div className="flex gap-2 mb-4">
+        {["tokens", "sub"].map((t) => (
+          <button
+            key={t} onClick={() => setTab(t)}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{ background: tab === t ? C.gold : C.surface, color: tab === t ? "#1A1208" : C.muted }}
+          >
+            {t === "tokens" ? "Tokens" : "Unlimited"}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        {plans.map((p) => (
+          <button key={p.id} onClick={() => choose(p)} className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+            <div>
+              <div style={{ color: C.text, fontWeight: 600 }}>{p.label}</div>
+              <div className="text-xs" style={{ color: C.muted }}>{p.tokens ? `${p.tokens} tokens` : p.desc}</div>
+            </div>
+            <div style={{ color: C.gold, fontFamily: mono }}>{p.mvr} MVR{p.period ? "/mo" : ""}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- profile edit
+function FieldGroup({ label, options, value, onChange }) {
+  return (
+    <div className="mb-4">
+      <SectionLabel>{label}</SectionLabel>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => (
+          <button
+            key={o} onClick={() => onChange(o)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium"
+            style={{ background: value === o ? C.gold : C.surface, color: value === o ? "#1A1208" : C.muted, border: `1px solid ${value === o ? C.gold : C.line}` }}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfileForm({ me, setMe, title, ctaLabel, onSubmit, showSavedToast }) {
+  const [saved, setSaved] = useState(false);
+  const update = (k, v) => setMe({ ...me, [k]: v });
+  const updateLifestyle = (k, v) => setMe({ ...me, lifestyle: { ...me.lifestyle, [k]: v } });
+  const handleSubmit = () => {
+    if (showSavedToast) { setSaved(true); setTimeout(() => setSaved(false), 1500); }
+    if (onSubmit) onSubmit();
+  };
+
+  return (
+    <div className="px-4 pt-6 pb-28">
+      <div className="flex items-center justify-between mb-5">
+        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>{title}</span>
+        <LogoMark size={28} />
+      </div>
+
+      <div className="flex flex-col items-center mb-6">
+        <div className="relative">
+          <Avatar name={me.name || "?"} color={C.gold} size={88} />
+          <div className="absolute -bottom-1 -right-1 rounded-full p-1.5" style={{ background: C.teal }}>
+            <Camera size={14} style={{ color: "#0A1F1C" }} />
+          </div>
+        </div>
+        <span className="text-xs mt-2" style={{ color: C.muted }}>Tap to add a photo</span>
+      </div>
+
+      <SectionLabel>Nickname</SectionLabel>
+      <input value={me.name} onChange={(e) => update("name", e.target.value)} placeholder="What should people call you?" className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
+
+      <div className="flex gap-3 mb-4">
+        <div className="flex-1">
+          <SectionLabel>Age</SectionLabel>
+          <input type="number" value={me.age} onChange={(e) => update("age", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
+        </div>
+        <div className="flex-1">
+          <SectionLabel>Island</SectionLabel>
+          <input value={me.island} onChange={(e) => update("island", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
+        </div>
+      </div>
+
+      <FieldGroup label="Gender" options={["Woman", "Man"]} value={me.gender} onChange={(v) => update("gender", v)} />
+      <FieldGroup label="Looking for" options={["Women", "Men", "Everyone"]} value={me.lookingFor} onChange={(v) => update("lookingFor", v)} />
+      <FieldGroup label="Relationship status" options={STATUS_OPTIONS} value={me.status} onChange={(v) => update("status", v)} />
+      <FieldGroup label="Looking to find" options={INTENT_OPTIONS} value={me.intent} onChange={(v) => update("intent", v)} />
+
+      <SectionLabel>Work</SectionLabel>
+      <input value={me.work} onChange={(e) => update("work", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
+
+      <SectionLabel>Bio</SectionLabel>
+      <textarea value={me.bio} onChange={(e) => update("bio", e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm mb-5" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
+
+      <SectionLabel>Lifestyle — private, shown only to matches you chat with</SectionLabel>
+      <div className="flex flex-col gap-3 mb-6">
+        {LIFESTYLE_FIELDS.map((f) => (
+          <div key={f.key}>
+            <div className="text-sm mb-1.5" style={{ color: C.text }}>{f.label}</div>
+            <div className="flex gap-2">
+              {ANSWER_OPTIONS.map((o) => (
+                <button
+                  key={o} onClick={() => updateLifestyle(f.key, o)}
+                  className="px-3 py-1.5 rounded-full text-xs"
+                  style={{ background: me.lifestyle[f.key] === o ? C.teal : C.surface, color: me.lifestyle[f.key] === o ? "#0A1F1C" : C.muted, border: `1px solid ${me.lifestyle[f.key] === o ? C.teal : C.line}` }}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Button onClick={handleSubmit}>
+        {saved ? "Saved ✓" : ctaLabel}
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- wallet tab
+function WalletTab({ me, onTopUp }) {
+  return (
+    <div className="px-4 pt-6 pb-28">
+      <div className="flex items-center justify-between mb-5">
+        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Wallet</span>
+        <LogoMark size={28} />
+      </div>
+      <div className="rounded-2xl p-5 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <SectionLabel>Token balance</SectionLabel>
+        <div style={{ color: C.gold, fontFamily: mono, fontSize: 32 }}>{me.tokenBalance}</div>
+        <div className="text-xs mt-1" style={{ color: C.muted }}>Unlocking a chat costs 30 tokens</div>
+      </div>
+      <div className="rounded-2xl p-5 mb-5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <SectionLabel>Subscription</SectionLabel>
+        <div style={{ color: C.text }}>{me.subscription === "none" ? "No active plan" : me.subscription}</div>
+      </div>
+      <Button onClick={onTopUp}>Top up wallet</Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- chats tab
+function ChatsTab({ users, onOpen }) {
+  const unlocked = users.filter((u) => u.unlocked);
+  return (
+    <div className="px-4 pt-6 pb-28">
+      <div className="flex items-center justify-between mb-5">
+        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Chats</span>
+        <LogoMark size={28} />
+      </div>
+      {unlocked.length === 0 && (
+        <p className="text-sm" style={{ color: C.muted }}>Unlock a chat from Discover to start talking.</p>
+      )}
+      <div className="flex flex-col gap-2">
+        {unlocked.map((u) => (
+          <button key={u.id} onClick={() => onOpen(u)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+            <Avatar name={u.name} color={u.color} size={44} />
+            <div className="flex-1 min-w-0">
+              <div style={{ color: C.text, fontWeight: 600 }}>{u.name}</div>
+              <div className="text-xs truncate" style={{ color: C.muted }}>Tap to continue the conversation</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- discover tab
+function DiscoverTab({ users, onOpen, tokenBalance }) {
+  return (
+    <div className="px-4 pt-6 pb-28">
+      <div className="flex items-center justify-between mb-1">
+        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Discover</span>
+        <LogoMark size={28} />
+      </div>
+      <div className="text-xs mb-4" style={{ color: C.muted }}>{tokenBalance} tokens available</div>
+      <div className="flex flex-col gap-3">
+        {users.map((u) => <DiscoverCard key={u.id} u={u} onOpen={onOpen} />)}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- app
+export default function App() {
+  const [phase, setPhase] = useState("splash"); // splash | onboarding | app
+  const [tab, setTab] = useState("discover");
+  const [users, setUsers] = useState(USERS);
+  const [activeProfile, setActiveProfile] = useState(null);
+  const [activeChat, setActiveChat] = useState(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [me, setMe] = useState({
+    name: "", age: "", island: "", gender: "Woman", lookingFor: "Men",
+    status: "Single", intent: "Dating", work: "", bio: "",
+    lifestyle: { smoke: "No", drink: "No", party: "No" },
+    tokenBalance: 30, subscription: "none",
+  });
+
+  const unlock = (u, goTopUp) => {
+    if (goTopUp) { setActiveProfile(null); setTab("wallet"); setCheckoutOpen(true); return; }
+    if (me.tokenBalance < 30) return;
+    setMe({ ...me, tokenBalance: me.tokenBalance - 30 });
+    setUsers(users.map((x) => (x.id === u.id ? { ...x, unlocked: true } : x)));
+    setActiveProfile({ ...u, unlocked: true });
+  };
+  const messageUser = (u) => { setActiveProfile(null); setActiveChat(u); };
+
+  if (phase === "splash") return <Splash onContinue={() => setPhase("onboarding")} />;
+  if (phase === "onboarding") {
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+          body { font-family: 'IBM Plex Sans', sans-serif; }
+        `}</style>
+        <div className="max-w-md mx-auto" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+          <ProfileForm me={me} setMe={setMe} title="Tell us about yourself" ctaLabel="Start exploring" onSubmit={() => setPhase("app")} />
+        </div>
+      </div>
+    );
+  }
+  if (activeChat) return <ChatThread u={activeChat} onBack={() => setActiveChat(null)} />;
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+        input:focus, textarea:focus, button:focus-visible { outline: 2px solid ${C.teal}; outline-offset: 2px; }
+      `}</style>
+      <div className="max-w-md mx-auto relative" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+        {tab === "discover" && (
+          <DiscoverTab users={users} onOpen={setActiveProfile} tokenBalance={me.tokenBalance} />
+        )}
+        {tab === "chats" && <ChatsTab users={users} onOpen={setActiveChat} />}
+        {tab === "wallet" && !checkoutOpen && <WalletTab me={me} onTopUp={() => setCheckoutOpen(true)} />}
+        {tab === "wallet" && checkoutOpen && <Checkout onBack={() => setCheckoutOpen(false)} />}
+        {tab === "profile" && <ProfileForm me={me} setMe={setMe} title="Your profile" ctaLabel="Save changes" showSavedToast />}
+
+        {activeProfile && (
+          <ProfileSheet
+            u={activeProfile}
+            tokenBalance={me.tokenBalance}
+            onClose={() => setActiveProfile(null)}
+            onUnlock={unlock}
+            onMessage={messageUser}
+          />
+        )}
+
+        <BottomNav tab={tab} setTab={(t) => { setTab(t); setCheckoutOpen(false); }} />
+      </div>
+    </div>
+  );
+}
