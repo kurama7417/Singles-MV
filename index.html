@@ -34,6 +34,10 @@
   .label{font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;}
   .field{width:100%;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:14px;margin-bottom:16px;}
+  .field.error{border-color:var(--danger);}
+  select.field{cursor:pointer;appearance:auto;}
+  .pill-group.error .pill{border-color:var(--danger);}
+  #form-error{display:none;align-items:flex-start;gap:6px;background:rgba(199,92,77,0.12);border:1px solid var(--danger);color:var(--danger);font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:14px;}
   .field:focus,button:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
   textarea.field{resize:vertical;}
   .btn{display:block;width:100%;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;background:var(--gold);color:#1A1208;cursor:pointer;}
@@ -103,20 +107,29 @@ function wordmark(size=22){
 }
 
 /* ---------------------------------------------------------------- data */
+const ATOLLS = [
+  "Haa Alifu","Haa Dhaalu","Shaviyani","Noonu","Raa","Baa","Lhaviyani","Kaafu",
+  "Alif Alif","Alif Dhaalu","Vaavu","Meemu","Faafu","Dhaalu","Thaa","Laamu",
+  "Gaafu Alif","Gaafu Dhaalu","Gnaviyani","Seenu",
+];
 const PALETTE = ['var(--gold)','var(--teal)','#C75C4D','#8FA39E'];
 let USERS = [
-  { id:1, name:"Aishath", age:26, island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
+  { id:1, name:"Aishath", age:26, gender:"Woman", atoll:"Kaafu", island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
     bio:"Quiet evenings, good food, and someone who follows through on plans.",
+    religious:"Yes", wearBurqa:"Yes",
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[0], messages:[] },
-  { id:2, name:"Ibrahim", age:29, island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
+  { id:2, name:"Ibrahim", age:29, gender:"Man", atoll:"Kaafu", island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
     bio:"Out on the water most weekends. Looking for someone to drag along.",
+    religious:"No", wearBurqa:"",
     lifestyle:{smoke:"No",drink:"Prefer not to say",party:"No"}, unlocked:true, color:PALETTE[1],
     messages:[{from:"them",text:"Hey! Saw you're into diving too 🤿"},{from:"me",text:"Yes! Are you based in Malé?"},{from:"them",text:"Hulhumalé side, but happy to meet halfway"}] },
-  { id:3, name:"Fathimath", age:24, island:"Addu City", work:"Nurse", status:"Divorced", intent:"Casual",
+  { id:3, name:"Fathimath", age:24, gender:"Woman", atoll:"Seenu", island:"Addu City", work:"Nurse", status:"Divorced", intent:"Casual",
     bio:"Just moved back from Malé. Taking things slow and easy.",
+    religious:"No", wearBurqa:"No",
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[2], messages:[] },
-  { id:4, name:"Hassan", age:31, island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
+  { id:4, name:"Hassan", age:31, gender:"Man", atoll:"Kaafu", island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
     bio:"Ready to settle down. Family means everything to me.",
+    religious:"Yes", wearBurqa:"",
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[3], messages:[] },
 ];
 const LIFESTYLE_FIELDS = [
@@ -127,6 +140,7 @@ const LIFESTYLE_FIELDS = [
 const INTENT_OPTIONS = ["Casual","Dating","Serious","Marriage-minded"];
 const STATUS_OPTIONS = ["Single","Divorced","Widowed","Separated"];
 const ANSWER_OPTIONS = ["Yes","No","Prefer not to say"];
+const BOOL_OPTIONS = ["Yes","No"];
 const TOKEN_PACKS = [
   {id:"t50", label:"Starter", mvr:50, tokens:100},
   {id:"t100", label:"Basic", mvr:100, tokens:200},
@@ -147,8 +161,8 @@ let state = {
   phase:"splash", tab:"discover",
   activeProfileId:null, activeChatId:null,
   checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
-  me:{ name:"", age:"", island:"", work:"", bio:"", gender:"Woman", lookingFor:"Men",
-       status:"Single", intent:"Dating", lifestyle:{smoke:"No",drink:"No",party:"No"},
+  me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
+       status:"", intent:"", religious:"", wearBurqa:"", lifestyle:{smoke:"",drink:"",party:""},
        photoData:null, tokenBalance:30, subscription:"none" },
 };
 
@@ -169,15 +183,62 @@ function selectPill(btn, value){
   group.dataset.value = value;
   group.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
+  group.classList.remove('error');
+  if(group.dataset.group==='gender'){
+    const wrap = document.getElementById('burqa-field-wrap');
+    if(wrap) wrap.style.display = (value==='Woman') ? 'block' : 'none';
+  }
 }
 function readProfileForm(){
   const get = id => (document.getElementById(id)||{}).value || "";
   const groupVal = g => { const el=document.querySelector(`.pill-group[data-group="${g}"]`); return el?el.dataset.value:""; };
   return {
-    name:get('f-name'), age:get('f-age'), island:get('f-island'), work:get('f-work'), bio:get('f-bio'),
+    name:get('f-name'), age:get('f-age'), atoll:get('f-atoll'), island:get('f-island'), work:get('f-work'), bio:get('f-bio'),
     gender:groupVal('gender'), lookingFor:groupVal('lookingFor'), status:groupVal('status'), intent:groupVal('intent'),
+    religious:groupVal('religious'), wearBurqa:groupVal('wearBurqa'),
     lifestyle:{ smoke:groupVal('lifestyle-smoke'), drink:groupVal('lifestyle-drink'), party:groupVal('lifestyle-party') },
   };
+}
+function validateProfileForm(){
+  const d = readProfileForm();
+  const missing = [];
+  if(!d.name.trim()) missing.push({id:'f-name', label:'Nickname'});
+  if(!d.age) missing.push({id:'f-age', label:'Age'});
+  if(!d.atoll) missing.push({id:'f-atoll', label:'Atoll'});
+  if(!d.island.trim()) missing.push({id:'f-island', label:'Island'});
+  if(!d.gender) missing.push({group:'gender', label:'Gender'});
+  if(!d.lookingFor) missing.push({group:'lookingFor', label:'Looking for'});
+  if(!d.status) missing.push({group:'status', label:'Relationship status'});
+  if(!d.intent) missing.push({group:'intent', label:'Looking to find'});
+  if(!d.religious) missing.push({group:'religious', label:'Religious'});
+  if(d.gender==='Woman' && !d.wearBurqa) missing.push({group:'wearBurqa', label:'Wears burqa'});
+  if(!d.work.trim()) missing.push({id:'f-work', label:'Work'});
+  if(!d.bio.trim()) missing.push({id:'f-bio', label:'Bio'});
+  if(!d.lifestyle.smoke) missing.push({group:'lifestyle-smoke', label:'Smokes'});
+  if(!d.lifestyle.drink) missing.push({group:'lifestyle-drink', label:'Drinks alcohol'});
+  if(!d.lifestyle.party) missing.push({group:'lifestyle-party', label:'Parties / substances'});
+  if(!state.me.photoData) missing.push({special:'photo', label:'Photo'});
+  return { valid: missing.length===0, missing, data:d };
+}
+function applyFormErrors(missing){
+  document.querySelectorAll('.field.error').forEach(el=>el.classList.remove('error'));
+  document.querySelectorAll('.pill-group.error').forEach(el=>el.classList.remove('error'));
+  const ph = document.getElementById('photo-hint');
+  if(ph){ ph.style.color = ''; ph.textContent = 'Tap to add a photo'; }
+  missing.forEach(m=>{
+    if(m.id){ const el=document.getElementById(m.id); if(el) el.classList.add('error'); }
+    if(m.group){ const el=document.querySelector(`.pill-group[data-group="${m.group}"]`); if(el) el.classList.add('error'); }
+    if(m.special==='photo' && ph){ ph.style.color='var(--danger)'; ph.textContent='Photo required — tap to add one'; }
+  });
+  const err = document.getElementById('form-error');
+  if(err){
+    if(missing.length){
+      err.style.display = 'flex';
+      err.innerHTML = `${ICONS.alert(14)} <span>Please complete: ${missing.map(m=>m.label).join(', ')}</span>`;
+    } else {
+      err.style.display = 'none';
+    }
+  }
 }
 function showToast(msg){
   const app = document.getElementById('app');
@@ -239,20 +300,25 @@ function renderProfileForm({title, cta, mode}){
         </div>
       </div>
       <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="handlePhoto(event)">
-      <span class="muted" style="font-size:12px;margin-top:8px;">Tap to add a photo</span>
+      <span class="muted" id="photo-hint" style="font-size:12px;margin-top:8px;">Tap to add a photo</span>
     </div>
 
     <div class="label">Nickname</div>
     <input id="f-name" class="field" placeholder="What should people call you?" value="${me.name}">
 
-    <div class="row gap3" style="margin-bottom:0;">
+    <div class="label">Age</div>
+    <input id="f-age" type="number" class="field" value="${me.age}">
+
+    <div class="label">Location</div>
+    <div class="row gap3">
       <div style="flex:1;">
-        <div class="label">Age</div>
-        <input id="f-age" type="number" class="field" value="${me.age}">
+        <select id="f-atoll" class="field">
+          <option value="" ${!me.atoll?'selected':''} disabled hidden>Atoll</option>
+          ${ATOLLS.map(a=>`<option value="${a}" ${me.atoll===a?'selected':''}>${a}</option>`).join('')}
+        </select>
       </div>
       <div style="flex:1;">
-        <div class="label">Island</div>
-        <input id="f-island" class="field" value="${me.island}">
+        <input id="f-island" class="field" placeholder="Island" value="${me.island}">
       </div>
     </div>
 
@@ -267,6 +333,14 @@ function renderProfileForm({title, cta, mode}){
 
     <div class="label">Looking to find</div>
     ${pillGroup('intent', INTENT_OPTIONS, me.intent)}
+
+    <div class="label">Religious</div>
+    ${pillGroup('religious', BOOL_OPTIONS, me.religious)}
+
+    <div id="burqa-field-wrap" style="display:${me.gender==='Woman' ? 'block' : 'none'};">
+      <div class="label">Wears burqa</div>
+      ${pillGroup('wearBurqa', BOOL_OPTIONS, me.wearBurqa)}
+    </div>
 
     <div class="label">Work</div>
     <input id="f-work" class="field" value="${me.work}">
@@ -284,6 +358,7 @@ function renderProfileForm({title, cta, mode}){
       `).join('')}
     </div>
 
+    <div id="form-error"></div>
     <button class="btn" onclick="${mode==='onboarding' ? 'finishOnboarding()' : 'saveProfile()'}">${cta}</button>
   </div>`;
 }
@@ -292,34 +367,61 @@ function handlePhoto(e){
   if(!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    state.me.photoData = reader.result;
+    state.me = {...state.me, ...readProfileForm(), photoData: reader.result};
     render();
   };
   reader.readAsDataURL(file);
 }
 function finishOnboarding(){
-  state.me = {...state.me, ...readProfileForm()};
+  const { valid, missing, data } = validateProfileForm();
+  applyFormErrors(missing);
+  if(!valid) return;
+  state.me = {...state.me, ...data};
   state.phase = "app"; state.tab = "discover";
   render();
 }
 function saveProfile(){
-  state.me = {...state.me, ...readProfileForm()};
+  const { valid, missing, data } = validateProfileForm();
+  applyFormErrors(missing);
+  if(!valid) return;
+  state.me = {...state.me, ...data};
   render();
   showToast("Saved ✓");
 }
 
+/* ---------------------------------------------------------------- matching */
+function isCompatible(me, u){
+  if(u.lifestyle.smoke !== me.lifestyle.smoke) return false;
+  if(u.lifestyle.drink !== me.lifestyle.drink) return false;
+  if(u.lifestyle.party !== me.lifestyle.party) return false;
+
+  const meReligiousMan = me.gender==="Man" && me.religious==="Yes";
+  const meBurqaWoman = me.gender==="Woman" && me.wearBurqa==="Yes";
+  const uReligiousMan = u.gender==="Man" && u.religious==="Yes";
+  const uBurqaWoman = u.gender==="Woman" && u.wearBurqa==="Yes";
+
+  if(meReligiousMan && !uBurqaWoman) return false;
+  if(meBurqaWoman && !uReligiousMan) return false;
+  if(uReligiousMan && !meBurqaWoman) return false;
+  if(uBurqaWoman && !meReligiousMan) return false;
+
+  return true;
+}
+
 /* ---------------------------------------------------------------- discover */
 function renderDiscover(){
+  const visible = USERS.filter(u=>isCompatible(state.me,u));
   return `<div class="screen with-nav">
     <div class="row between"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
     <div class="muted" style="font-size:12px;margin:4px 0 16px;">${state.me.tokenBalance} tokens available</div>
+    ${visible.length===0 ? `<p class="muted" style="font-size:14px;margin-top:24px;text-align:center;">No matches yet based on your preferences. Check back soon.</p>` : `
     <div class="col gap3">
-      ${USERS.map(u=>`
+      ${visible.map(u=>`
         <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openProfile(${u.id})">
           ${avatarHTML(u.name,u.color,52)}
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${u.name}, ${u.age}</div>
-            <div class="row gap2 muted" style="font-size:12px;">${ICONS.mappin(12)} ${u.island} · ${u.work}</div>
+            <div class="row gap2 muted" style="font-size:12px;">${ICONS.mappin(12)} ${u.island}, ${u.atoll} · ${u.work}</div>
             <div style="margin-top:6px;"><span class="tagpill tag-teal">${u.intent}</span></div>
           </div>
           ${u.unlocked
@@ -327,7 +429,7 @@ function renderDiscover(){
             : `<span class="tagpill tag-muted">${ICONS.lock(11)} Locked</span>`}
         </button>
       `).join('')}
-    </div>
+    </div>`}
   </div>`;
 }
 function openProfile(id){ state.activeProfileId = id; render(); }
@@ -342,7 +444,7 @@ function renderProfileSheet(id){
       <div class="col" style="align-items:center;margin-bottom:16px;">
         ${avatarHTML(u.name,u.color,84)}
         <div class="serif" style="font-size:20px;margin-top:12px;">${u.name}, ${u.age}</div>
-        <div class="row gap2 muted" style="font-size:13px;">${ICONS.mappin(13)} ${u.island}</div>
+        <div class="row gap2 muted" style="font-size:13px;">${ICONS.mappin(13)} ${u.island}, ${u.atoll}</div>
         <div class="row gap2" style="margin-top:10px;">
           <span class="tagpill tag-gold">${u.intent}</span>
           <span class="tagpill tag-muted">${u.status}</span>
@@ -359,6 +461,15 @@ function renderProfileSheet(id){
             <span style="font-size:13px;">${u.lifestyle[f.key]}</span>
           </div>
         `).join('')}
+        <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
+          <span class="muted" style="font-size:13px;">Religious</span>
+          <span style="font-size:13px;">${u.religious}</span>
+        </div>
+        ${u.gender==="Woman" ? `
+        <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
+          <span class="muted" style="font-size:13px;">Wears burqa</span>
+          <span style="font-size:13px;">${u.wearBurqa}</span>
+        </div>` : ''}
       </div>
       ${u.unlocked
         ? `<button class="btn" onclick="messageUser(${u.id})">Message ${u.name}</button>`
