@@ -1,735 +1,612 @@
-import React, { useState } from "react";
-import {
-  Heart, Lock, MessageCircle, Wallet, User, Camera, ChevronLeft, Check,
-  Send, Phone, Briefcase, MapPin, X, Cigarette, Wine, PartyPopper, Copy, Upload, Clock, ShieldCheck, AlertCircle
-} from "lucide-react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Singles MV</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+  :root{
+    --bg:#0A1F1C; --surface:#102A26; --surfaceAlt:#15332E; --red:#C8313A;
+    --green:#1C7A3E; --text:#F2EFE6; --muted:#8FA39E; --danger:#E0973B; --line:#1E3D37; --greenLight:#4FB876;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#04100E;font-family:'IBM Plex Sans',sans-serif;color:var(--text);}
+  button,input,textarea{font-family:inherit;}
+  #backdrop{position:fixed;inset:0;background:radial-gradient(circle at 30% 15%, #123832 0%, #04100E 65%);z-index:-1;}
+  #frame{min-height:100vh;display:flex;justify-content:center;}
+  #app{width:100%;max-width:430px;height:100vh;background:var(--bg);position:relative;overflow:hidden;}
+  @media (min-width:700px){
+    #frame{align-items:center;padding:40px 0;}
+    #app{height:844px;border-radius:36px;box-shadow:0 30px 80px rgba(0,0,0,0.55);border:1px solid var(--line);}
+  }
+  .screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 16px 24px;}
+  .screen.with-nav{padding-bottom:96px;}
+  .row{display:flex;align-items:center;}
+  .between{justify-content:space-between;}
+  .center{justify-content:center;}
+  .col{display:flex;flex-direction:column;}
+  .gap2{gap:8px;} .gap3{gap:12px;}
+  .muted{color:var(--muted);}
+  .serif{font-family:'Fraunces',serif;font-weight:600;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  h1.title{font-family:'Fraunces',serif;font-weight:600;font-size:22px;margin:0;}
+  .label{font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;}
+  .field{width:100%;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:14px;margin-bottom:16px;}
+  .field:focus,button:focus-visible{outline:2px solid var(--greenLight);outline-offset:2px;}
+  textarea.field{resize:vertical;}
+  .btn{display:block;width:100%;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;background:var(--red);color:var(--text);cursor:pointer;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn-ghost{background:var(--surfaceAlt);color:var(--text);border:1px solid var(--line);}
+  .pill{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;}
+  .pill.active{background:var(--red);color:var(--text);border-color:var(--red);}
+  .pill-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+  .tagpill{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+  .tag-green{background:rgba(28,122,62,.18);color:#4FB876;}
+  .tag-red{background:rgba(200,49,58,.18);color:var(--red);}
+  .tag-muted{background:var(--surfaceAlt);color:var(--muted);}
+  .avatar{border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text);flex-shrink:0;position:relative;background-size:cover;background-position:center;}
+  .lock-badge{position:absolute;bottom:-2px;right:-2px;background:var(--surface);border:1px solid var(--line);border-radius:999px;display:flex;align-items:center;justify-content:center;}
+  .nav{position:absolute;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:5;}
+  .nav button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:11px;}
+  .nav button.active{color:var(--red);}
+  .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20;}
+  .modal-sheet{width:100%;max-height:86%;overflow-y:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:16px;}
+  .chat-screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;}
+  .bubble{padding:8px 12px;border-radius:16px;font-size:14px;max-width:75%;}
+  .bubble.me{align-self:flex-end;background:var(--red);color:var(--text);}
+  .bubble.them{align-self:flex-start;background:var(--surface);color:var(--text);}
+  .chat-input-row{display:flex;gap:8px;padding:12px 16px 16px;}
+  .chat-input-row input{flex:1;}
+  .icon-btn{background:var(--red);border:none;border-radius:10px;width:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  a.btn-link{text-decoration:none;}
+  .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:var(--green);color:var(--text);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;z-index:30;}
+</style>
+</head>
+<body>
+<div id="backdrop"></div>
+<div id="frame"><div id="app"></div></div>
 
-// ---------------------------------------------------------------- tokens
-const C = {
-  bg: "#0A1F1C",
-  surface: "#102A26",
-  surfaceAlt: "#15332E",
-  gold: "#D4A24C",
-  teal: "#2BA89A",
-  text: "#F2EFE6",
-  muted: "#8FA39E",
-  danger: "#C75C4D",
-  line: "#1E3D37",
+<script>
+/* ---------------------------------------------------------------- icons */
+const ICONS = {
+  heart:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><path d="M12 20 C6 15 3 11 3 7.5 C3 4.5 5.5 3 8 4.2 C9.5 5 11 6.5 12 8.5 C13 6.5 14.5 5 16 4.2 C18.5 3 21 4.5 21 7.5 C21 11 18 15 12 20 Z"/></svg>`,
+  message:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.9 8.9 0 0 1-3.8-.8L3 21l1.9-5.7A8.4 8.4 0 1 1 21 11.5Z"/></svg>`,
+  wallet:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14" r="1.2" fill="${c}" stroke="none"/></svg>`,
+  user:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>`,
+  lock:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+  check:(s=16,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>`,
+  chevron:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+  x:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  send:(s=18,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>`,
+  copy:(s=18,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
+  upload:(s=16,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>`,
+  clock:(s=22,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  alert:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20Z"/><path d="M12 10v4M12 17h.01"/></svg>`,
+  mappin:(s=12,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>`,
+  briefcase:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+  phone:(s=15,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 2a12 12 0 0 0 5.5 5.5l2-2.5 5 2v4a2 2 0 0 1-2 2C9.5 22 2 14.5 2 6a2 2 0 0 1 2-2Z"/></svg>`,
+  camera:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
 };
-const serif = "'Fraunces', serif";
-const mono = "'IBM Plex Mono', monospace";
-
-// ---------------------------------------------------------------- logo
-function LogoMark({ size = 40 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <rect width="64" height="64" rx="16" fill={C.surface} />
-      <circle cx="32" cy="32" r="22" fill="none" stroke={C.teal} strokeWidth="2" strokeDasharray="3 4" />
-      <path
-        d="M32,46 C20,38 12,29 12,20 C12,12 19,7 26,11 C29,13 31,16 32,19 C33,16 35,13 38,11 C45,7 52,12 52,20 C52,29 44,38 32,46 Z"
-        fill={C.gold}
-        transform="translate(0,3)"
-      />
-    </svg>
-  );
+function logoSVG(size=40){
+  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none">
+    <rect width="64" height="64" rx="16" fill="var(--surface)"/>
+    <path d="M32,49 C19,40 11,30 11,20 C11,11 19,6 26,10 C29,12 31,16 32,19 C33,16 35,12 38,10 C45,6 53,11 53,20 C53,30 45,40 32,49 Z" fill="var(--red)"/>
+    <rect x="19" y="23" width="26" height="15" rx="3" fill="var(--green)"/>
+    <circle cx="34.5" cy="30.5" r="5.4" fill="#FFFFFF"/>
+    <circle cx="36.6" cy="29" r="4.4" fill="var(--green)"/>
+  </svg>`;
 }
-function Wordmark({ size = 22 }) {
-  return (
-    <span style={{ fontFamily: serif, fontWeight: 600, fontSize: size, color: C.text, letterSpacing: "0.01em" }}>
-      Singles <span style={{ color: C.gold }}>MV</span>
-    </span>
-  );
+function wordmark(size=22){
+  return `<span style="font-family:'Fraunces',serif;font-weight:600;font-size:${size}px;">Singles <span style="color:var(--red)">MV</span></span>`;
 }
 
-// ---------------------------------------------------------------- atoms
-function Pill({ children, tone = "muted" }) {
-  const colors = {
-    muted: { bg: C.surfaceAlt, fg: C.muted },
-    gold: { bg: "rgba(212,162,76,0.15)", fg: C.gold },
-    teal: { bg: "rgba(43,168,154,0.15)", fg: C.teal },
-  }[tone];
-  return (
-    <span
-      className="px-2.5 py-1 rounded-full text-xs font-medium"
-      style={{ background: colors.bg, color: colors.fg }}
-    >
-      {children}
-    </span>
-  );
-}
-function SectionLabel({ children }) {
-  return (
-    <div className="text-xs mb-2" style={{ color: C.muted, letterSpacing: "0.04em" }}>
-      {children.toUpperCase()}
-    </div>
-  );
-}
-function Avatar({ name, color, size = 48, locked }) {
-  return (
-    <div
-      className="relative rounded-full flex items-center justify-center shrink-0"
-      style={{ width: size, height: size, background: color, color: "#1A1208", fontWeight: 700 }}
-    >
-      {name[0]}
-      {locked && (
-        <div
-          className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center"
-          style={{ width: size * 0.42, height: size * 0.42, background: C.surface, border: `1px solid ${C.line}` }}
-        >
-          <Lock size={size * 0.22} style={{ color: C.muted }} />
-        </div>
-      )}
-    </div>
-  );
-}
-function Button({ children, onClick, variant = "primary", disabled, full = true }) {
-  const styles = {
-    primary: { background: C.gold, color: "#1A1208" },
-    ghost: { background: C.surfaceAlt, color: C.text, border: `1px solid ${C.line}` },
-  }[variant];
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`${full ? "w-full" : ""} py-3 rounded-xl text-sm font-semibold transition-opacity`}
-      style={{ ...styles, opacity: disabled ? 0.5 : 1 }}
-    >
-      {children}
-    </button>
-  );
-}
-function BackHeader({ title, onBack }) {
-  return (
-    <div className="flex items-center gap-2 mb-5">
-      <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
-        <ChevronLeft size={20} style={{ color: C.muted }} />
-      </button>
-      <span style={{ color: C.text, fontWeight: 600 }}>{title}</span>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- mock data
-const PALETTE = [C.gold, C.teal, "#C75C4D", "#8FA39E"];
-const USERS = [
-  { id: 1, name: "Aishath", age: 26, island: "Malé", work: "Teacher", gender: "Woman", lookingFor: "Men",
-    status: "Single", intent: "Serious", bio: "Quiet evenings, good food, and someone who follows through on plans.",
-    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[0] },
-  { id: 2, name: "Ibrahim", age: 29, island: "Hulhumalé", work: "Marine Engineer", gender: "Man", lookingFor: "Women",
-    status: "Single", intent: "Dating", bio: "Out on the water most weekends. Looking for someone to drag along.",
-    lifestyle: { smoke: "No", drink: "Prefer not to say", party: "No" }, unlocked: true, color: PALETTE[1] },
-  { id: 3, name: "Fathimath", age: 24, island: "Addu City", work: "Nurse", gender: "Woman", lookingFor: "Men",
-    status: "Divorced", intent: "Casual", bio: "Just moved back from Malé. Taking things slow and easy.",
-    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[2] },
-  { id: 4, name: "Hassan", age: 31, island: "Malé", work: "Business owner", gender: "Man", lookingFor: "Women",
-    status: "Single", intent: "Marriage-minded", bio: "Ready to settle down. Family means everything to me.",
-    lifestyle: { smoke: "No", drink: "No", party: "No" }, unlocked: false, color: PALETTE[3] },
+/* ---------------------------------------------------------------- data */
+const PALETTE = ['var(--red)','var(--green)','#5C7AA0','#8FA39E'];
+let USERS = [
+  { id:1, name:"Aishath", age:26, island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
+    bio:"Quiet evenings, good food, and someone who follows through on plans.",
+    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[0], messages:[] },
+  { id:2, name:"Ibrahim", age:29, island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
+    bio:"Out on the water most weekends. Looking for someone to drag along.",
+    lifestyle:{smoke:"No",drink:"Prefer not to say",party:"No"}, unlocked:true, color:PALETTE[1],
+    messages:[{from:"them",text:"Hey! Saw you're into diving too 🤿"},{from:"me",text:"Yes! Are you based in Malé?"},{from:"them",text:"Hulhumalé side, but happy to meet halfway"}] },
+  { id:3, name:"Fathimath", age:24, island:"Addu City", work:"Nurse", status:"Divorced", intent:"Casual",
+    bio:"Just moved back from Malé. Taking things slow and easy.",
+    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[2], messages:[] },
+  { id:4, name:"Hassan", age:31, island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
+    bio:"Ready to settle down. Family means everything to me.",
+    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[3], messages:[] },
 ];
 const LIFESTYLE_FIELDS = [
-  { key: "smoke", label: "Smokes", icon: Cigarette },
-  { key: "drink", label: "Drinks alcohol", icon: Wine },
-  { key: "party", label: "Parties / substances", icon: PartyPopper },
+  {key:"smoke", label:"Smokes"},
+  {key:"drink", label:"Drinks alcohol"},
+  {key:"party", label:"Parties / substances"},
 ];
-const INTENT_OPTIONS = ["Casual", "Dating", "Serious", "Marriage-minded"];
-const STATUS_OPTIONS = ["Single", "Divorced", "Widowed", "Separated"];
-const ANSWER_OPTIONS = ["Yes", "No", "Prefer not to say"];
-
+const INTENT_OPTIONS = ["Casual","Dating","Serious","Marriage-minded"];
+const STATUS_OPTIONS = ["Single","Divorced","Widowed","Separated"];
+const ANSWER_OPTIONS = ["Yes","No","Prefer not to say"];
 const TOKEN_PACKS = [
-  { id: "t50", label: "Starter", mvr: 50, tokens: 100 },
-  { id: "t100", label: "Basic", mvr: 100, tokens: 200 },
-  { id: "t200", label: "Plus", mvr: 200, tokens: 400 },
-  { id: "t500", label: "Power", mvr: 500, tokens: 1000 },
+  {id:"t50", label:"Starter", mvr:50, tokens:100},
+  {id:"t100", label:"Basic", mvr:100, tokens:200},
+  {id:"t200", label:"Plus", mvr:200, tokens:400},
+  {id:"t500", label:"Power", mvr:500, tokens:1000},
 ];
 const SUB_TIERS = [
-  { id: "s300", label: "Unlimited", mvr: 300, period: true, desc: "Unlimited chat unlocks" },
-  { id: "s500", label: "Unlimited+", mvr: 500, period: true, desc: "+ super-likes, who-liked-you, 2 boosts/mo" },
+  {id:"s300", label:"Unlimited", mvr:300, period:true, desc:"Unlimited chat unlocks"},
+  {id:"s500", label:"Unlimited+", mvr:500, period:true, desc:"+ super-likes, who-liked-you, 2 boosts/mo"},
 ];
-const BANK = { bankName: "Bank of Maldives (BML)", accountName: "[Your Business Name]", accountNumber: "0000 0000 0000" };
-function genRef() {
-  return `MV-${Date.now().toString(36).toUpperCase().slice(-4)}${Math.random().toString(36).toUpperCase().slice(2, 5)}`;
+const BANK = {bankName:"Bank of Maldives (BML)", accountName:"[Your Business Name]", accountNumber:"0000 0000 0000"};
+function genRef(){
+  return "MV-" + Date.now().toString(36).toUpperCase().slice(-4) + Math.random().toString(36).toUpperCase().slice(2,5);
 }
 
-// ---------------------------------------------------------------- bottom nav
-function BottomNav({ tab, setTab }) {
-  const items = [
-    { id: "discover", icon: Heart, label: "Discover" },
-    { id: "chats", icon: MessageCircle, label: "Chats" },
-    { id: "wallet", icon: Wallet, label: "Wallet" },
-    { id: "profile", icon: User, label: "Profile" },
-  ];
-  return (
-    <div
-      className="fixed bottom-0 left-0 right-0 flex justify-center"
-      style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}
-    >
-      <div className="w-full max-w-md flex">
-        {items.map((it) => {
-          const active = tab === it.id;
-          const Icon = it.icon;
-          return (
-            <button
-              key={it.id}
-              onClick={() => setTab(it.id)}
-              className="flex-1 flex flex-col items-center gap-1 py-3"
-            >
-              <Icon size={20} style={{ color: active ? C.gold : C.muted }} />
-              <span style={{ fontSize: 11, color: active ? C.gold : C.muted }}>{it.label}</span>
-            </button>
-          );
-        })}
+/* ---------------------------------------------------------------- state */
+let state = {
+  phase:"splash", tab:"discover",
+  activeProfileId:null, activeChatId:null,
+  checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
+  me:{ name:"", age:"", island:"", work:"", bio:"", gender:"Woman", lookingFor:"Men",
+       status:"Single", intent:"Dating", lifestyle:{smoke:"No",drink:"No",party:"No"},
+       photoData:null, tokenBalance:30, subscription:"none" },
+};
+
+/* ---------------------------------------------------------------- helpers */
+function avatarHTML(name, color, size, photoData){
+  const style = photoData
+    ? `width:${size}px;height:${size}px;background-image:url(${photoData})`
+    : `width:${size}px;height:${size}px;background:${color}`;
+  return `<div class="avatar" style="${style};font-size:${size*0.4}px">${photoData?'':(name[0]||'?')}</div>`;
+}
+function pillGroup(group, options, value){
+  return `<div class="pill-group" data-group="${group}" data-value="${value}">
+    ${options.map(o=>`<button type="button" class="pill ${o===value?'active':''}" onclick="selectPill(this,'${o}')">${o}</button>`).join('')}
+  </div>`;
+}
+function selectPill(btn, value){
+  const group = btn.closest('.pill-group');
+  group.dataset.value = value;
+  group.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+}
+function readProfileForm(){
+  const get = id => (document.getElementById(id)||{}).value || "";
+  const groupVal = g => { const el=document.querySelector(`.pill-group[data-group="${g}"]`); return el?el.dataset.value:""; };
+  return {
+    name:get('f-name'), age:get('f-age'), island:get('f-island'), work:get('f-work'), bio:get('f-bio'),
+    gender:groupVal('gender'), lookingFor:groupVal('lookingFor'), status:groupVal('status'), intent:groupVal('intent'),
+    lifestyle:{ smoke:groupVal('lifestyle-smoke'), drink:groupVal('lifestyle-drink'), party:groupVal('lifestyle-party') },
+  };
+}
+function showToast(msg){
+  const app = document.getElementById('app');
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  app.appendChild(t);
+  setTimeout(()=>t.remove(), 1400);
+}
+function copyField(value, btn){
+  navigator.clipboard?.writeText(value).catch(()=>{});
+  const icon = btn.querySelector('.copy-icon');
+  if(icon){ icon.innerHTML = ICONS.check(18,'var(--greenLight)'); setTimeout(()=>{ icon.innerHTML = ICONS.copy(18,'var(--muted)'); }, 1400); }
+}
+
+/* ---------------------------------------------------------------- render dispatch */
+function render(){
+  const app = document.getElementById('app');
+  if(state.phase==="splash"){ app.innerHTML = renderSplash(); return; }
+  if(state.phase==="onboarding"){ app.innerHTML = renderProfileForm({title:"Tell us about yourself", cta:"Start exploring", mode:"onboarding"}); return; }
+  if(state.activeChatId){ app.innerHTML = renderChatThread(state.activeChatId); return; }
+
+  let body = "";
+  if(state.tab==="discover") body = renderDiscover();
+  else if(state.tab==="chats") body = renderChats();
+  else if(state.tab==="wallet") body = state.checkout.open ? renderCheckout() : renderWallet();
+  else if(state.tab==="profile") body = renderProfileForm({title:"Your profile", cta:"Save changes", mode:"edit"});
+
+  app.innerHTML = body + renderNav();
+  if(state.activeProfileId) app.innerHTML += renderProfileSheet(state.activeProfileId);
+}
+
+/* ---------------------------------------------------------------- splash */
+function renderSplash(){
+  return `<div class="screen col center" style="align-items:center;text-align:center;">
+    ${logoSVG(88)}
+    <div style="margin-top:20px">${wordmark(28)}</div>
+    <p class="muted" style="margin:8px 0 0;font-size:14px;">Made for the Maldives</p>
+    <div class="tagpill tag-red" style="margin-top:16px;">Sign up free — get 30 tokens, enough to unlock your first chat</div>
+    <div style="width:100%;max-width:260px;margin-top:32px;">
+      <button class="btn" onclick="state.phase='onboarding';render()">Get started</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------------------------------------------------------- profile form (onboarding + edit) */
+function renderProfileForm({title, cta, mode}){
+  const me = state.me;
+  return `<div class="screen ${mode==='edit'?'with-nav':''}">
+    <div class="row between" style="margin-bottom:20px;">
+      <h1 class="title">${title}</h1>
+      ${logoSVG(28)}
+    </div>
+
+    <div class="col" style="align-items:center;margin-bottom:24px;">
+      <div style="position:relative;cursor:pointer;" onclick="document.getElementById('f-photo').click()">
+        ${avatarHTML(me.name||'?', 'var(--red)', 88, me.photoData)}
+        <div style="position:absolute;bottom:-2px;right:-2px;background:var(--green);border-radius:999px;padding:6px;display:flex;">
+          ${ICONS.camera(14,'var(--text)')}
+        </div>
+      </div>
+      <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+      <span class="muted" style="font-size:12px;margin-top:8px;">Tap to add a photo</span>
+    </div>
+
+    <div class="label">Nickname</div>
+    <input id="f-name" class="field" placeholder="What should people call you?" value="${me.name}">
+
+    <div class="row gap3" style="margin-bottom:0;">
+      <div style="flex:1;">
+        <div class="label">Age</div>
+        <input id="f-age" type="number" class="field" value="${me.age}">
+      </div>
+      <div style="flex:1;">
+        <div class="label">Island</div>
+        <input id="f-island" class="field" value="${me.island}">
       </div>
     </div>
-  );
-}
 
-// ---------------------------------------------------------------- splash
-function Splash({ onContinue }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: C.bg }}>
-      <LogoMark size={88} />
-      <div className="mt-5"><Wordmark size={28} /></div>
-      <p className="mt-2 text-sm" style={{ color: C.muted }}>Made for the Maldives</p>
-      <div className="mt-4 px-3 py-1.5 rounded-full text-xs" style={{ background: "rgba(212,162,76,0.15)", color: C.gold }}>
-        Sign up free — get 30 tokens, enough to unlock your first chat
-      </div>
-      <div className="w-full max-w-xs mt-8">
-        <Button onClick={onContinue}>Get started</Button>
-      </div>
+    <div class="label">Gender</div>
+    ${pillGroup('gender', ['Woman','Man'], me.gender)}
+
+    <div class="label">Looking for</div>
+    ${pillGroup('lookingFor', ['Women','Men','Everyone'], me.lookingFor)}
+
+    <div class="label">Relationship status</div>
+    ${pillGroup('status', STATUS_OPTIONS, me.status)}
+
+    <div class="label">Looking to find</div>
+    ${pillGroup('intent', INTENT_OPTIONS, me.intent)}
+
+    <div class="label">Work</div>
+    <input id="f-work" class="field" value="${me.work}">
+
+    <div class="label">Bio</div>
+    <textarea id="f-bio" class="field" rows="3">${me.bio}</textarea>
+
+    <div class="label">About — smoking, drinking, going out</div>
+    <div class="col gap3" style="margin-bottom:24px;">
+      ${LIFESTYLE_FIELDS.map(f=>`
+        <div>
+          <div style="font-size:14px;margin-bottom:6px;">${f.label}</div>
+          ${pillGroup('lifestyle-'+f.key, ANSWER_OPTIONS, me.lifestyle[f.key])}
+        </div>
+      `).join('')}
     </div>
-  );
+
+    <button class="btn" onclick="${mode==='onboarding' ? 'finishOnboarding()' : 'saveProfile()'}">${cta}</button>
+  </div>`;
+}
+function handlePhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.me.photoData = reader.result;
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function finishOnboarding(){
+  state.me = {...state.me, ...readProfileForm()};
+  state.phase = "app"; state.tab = "discover";
+  render();
+}
+function saveProfile(){
+  state.me = {...state.me, ...readProfileForm()};
+  render();
+  showToast("Saved ✓");
 }
 
-// ---------------------------------------------------------------- discover
-function DiscoverCard({ u, onOpen }) {
-  return (
-    <button
-      onClick={() => onOpen(u)}
-      className="w-full flex items-center gap-3 p-4 rounded-2xl text-left"
-      style={{ background: C.surface, border: `1px solid ${C.line}` }}
-    >
-      <Avatar name={u.name} color={u.color} size={52} />
-      <div className="flex-1 min-w-0">
-        <div style={{ color: C.text, fontWeight: 600 }}>{u.name}, {u.age}</div>
-        <div className="flex items-center gap-1 text-xs" style={{ color: C.muted }}>
-          <MapPin size={12} /> {u.island} · {u.work}
+/* ---------------------------------------------------------------- discover */
+function renderDiscover(){
+  return `<div class="screen with-nav">
+    <div class="row between"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
+    <div class="muted" style="font-size:12px;margin:4px 0 16px;">${state.me.tokenBalance} tokens available</div>
+    <div class="col gap3">
+      ${USERS.map(u=>`
+        <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openProfile(${u.id})">
+          ${avatarHTML(u.name,u.color,52)}
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">${u.name}, ${u.age}</div>
+            <div class="row gap2 muted" style="font-size:12px;">${ICONS.mappin(12)} ${u.island} · ${u.work}</div>
+            <div style="margin-top:6px;"><span class="tagpill tag-green">${u.intent}</span></div>
+          </div>
+          ${u.unlocked
+            ? `<span class="tagpill tag-green">${ICONS.check(11)} Chat open</span>`
+            : `<span class="tagpill tag-muted">${ICONS.lock(11)} Locked</span>`}
+        </button>
+      `).join('')}
+    </div>
+  </div>`;
+}
+function openProfile(id){ state.activeProfileId = id; render(); }
+function closeProfile(){ state.activeProfileId = null; render(); }
+
+function renderProfileSheet(id){
+  const u = USERS.find(x=>x.id===id);
+  const canUnlock = state.me.tokenBalance >= 30;
+  return `<div class="modal-backdrop" onclick="if(event.target===this) closeProfile()">
+    <div class="modal-sheet">
+      <div class="row" style="justify-content:flex-end;"><button onclick="closeProfile()" style="background:none;border:none;cursor:pointer;">${ICONS.x(20,'var(--muted)')}</button></div>
+      <div class="col" style="align-items:center;margin-bottom:16px;">
+        ${avatarHTML(u.name,u.color,84)}
+        <div class="serif" style="font-size:20px;margin-top:12px;">${u.name}, ${u.age}</div>
+        <div class="row gap2 muted" style="font-size:13px;">${ICONS.mappin(13)} ${u.island}</div>
+        <div class="row gap2" style="margin-top:10px;">
+          <span class="tagpill tag-red">${u.intent}</span>
+          <span class="tagpill tag-muted">${u.status}</span>
         </div>
-        <div className="mt-1.5"><Pill tone="teal">{u.intent}</Pill></div>
       </div>
-      {u.unlocked ? (
-        <Pill tone="teal"><span className="flex items-center gap-1"><Check size={11}/> Chat open</span></Pill>
-      ) : (
-        <Pill tone="muted"><span className="flex items-center gap-1"><Lock size={11}/> Locked</span></Pill>
-      )}
-    </button>
-  );
+      <div class="label">About</div>
+      <p style="font-size:14px;margin:0 0 12px;">${u.bio}</p>
+      <div class="row gap2 muted" style="font-size:13px;margin-bottom:20px;">${ICONS.briefcase(14)} ${u.work}</div>
+      <div class="label">Lifestyle</div>
+      <div class="col gap2" style="margin-bottom:24px;">
+        ${LIFESTYLE_FIELDS.map(f=>`
+          <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
+            <span class="muted" style="font-size:13px;">${f.label}</span>
+            <span style="font-size:13px;">${u.lifestyle[f.key]}</span>
+          </div>
+        `).join('')}
+      </div>
+      ${u.unlocked
+        ? `<button class="btn" onclick="messageUser(${u.id})">Message ${u.name}</button>`
+        : canUnlock
+          ? `<button class="btn" onclick="unlockChat(${u.id})">Unlock chat · 30 tokens</button>`
+          : `<div class="row gap2" style="color:var(--danger);font-size:13px;margin-bottom:10px;">${ICONS.alert(14)} Not enough tokens</div>
+             <button class="btn btn-ghost" onclick="goTopUp()">Top up wallet</button>`}
+    </div>
+  </div>`;
+}
+function unlockChat(id){
+  if(state.me.tokenBalance < 30) return;
+  state.me.tokenBalance -= 30;
+  const u = USERS.find(x=>x.id===id);
+  u.unlocked = true;
+  render();
+}
+function goTopUp(){
+  state.activeProfileId = null;
+  state.tab = "wallet";
+  state.checkout.open = true;
+  render();
+}
+function messageUser(id){
+  state.activeProfileId = null;
+  state.activeChatId = id;
+  render();
 }
 
-function ProfileSheet({ u, tokenBalance, onClose, onUnlock, onMessage }) {
-  return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
-      <div className="w-full max-w-md rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto" style={{ background: C.bg }}>
-        <div className="flex justify-end mb-2">
-          <button onClick={onClose}><X size={20} style={{ color: C.muted }} /></button>
-        </div>
-        <div className="flex flex-col items-center mb-4">
-          <Avatar name={u.name} color={u.color} size={84} />
-          <div className="mt-3 text-xl" style={{ color: C.text, fontFamily: serif, fontWeight: 600 }}>
-            {u.name}, {u.age}
+/* ---------------------------------------------------------------- chats tab */
+function renderChats(){
+  const unlocked = USERS.filter(u=>u.unlocked);
+  return `<div class="screen with-nav">
+    <div class="row between"><h1 class="title">Chats</h1>${logoSVG(28)}</div>
+    ${unlocked.length===0 ? `<p class="muted" style="font-size:14px;margin-top:16px;">Unlock a chat from Discover to start talking.</p>` : ''}
+    <div class="col gap2" style="margin-top:16px;">
+      ${unlocked.map(u=>`
+        <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openChat(${u.id})">
+          ${avatarHTML(u.name,u.color,44)}
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">${u.name}</div>
+            <div class="muted" style="font-size:12px;">Tap to continue the conversation</div>
           </div>
-          <div className="flex items-center gap-1 text-sm" style={{ color: C.muted }}>
-            <MapPin size={13} /> {u.island}
-          </div>
-          <div className="flex gap-2 mt-3">
-            <Pill tone="gold">{u.intent}</Pill>
-            <Pill tone="muted">{u.status}</Pill>
-          </div>
-        </div>
+        </button>
+      `).join('')}
+    </div>
+  </div>`;
+}
+function openChat(id){ state.activeChatId = id; render(); }
+function closeChat(){ state.activeChatId = null; render(); }
 
-        <SectionLabel>About</SectionLabel>
-        <p className="text-sm mb-4" style={{ color: C.text }}>{u.bio}</p>
-        <div className="flex items-center gap-2 text-sm mb-5" style={{ color: C.muted }}>
-          <Briefcase size={14} /> {u.work}
+/* ---------------------------------------------------------------- chat thread */
+let chatAgree = {}; // { [userId]: {me:bool, them:bool} }
+function renderChatThread(id){
+  const u = USERS.find(x=>x.id===id);
+  chatAgree[id] = chatAgree[id] || {me:false, them:false};
+  const a = chatAgree[id];
+  return `<div class="chat-screen">
+    <div class="row gap3" style="padding:20px 16px 12px;">
+      <button onclick="closeChat()" style="background:none;border:none;cursor:pointer;">${ICONS.chevron(20,'var(--muted)')}</button>
+      ${avatarHTML(u.name,u.color,36)}
+      <span style="font-weight:600;">${u.name}</span>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      ${u.messages.map(m=>`<div class="bubble ${m.from==='me'?'me':'them'}">${m.text}</div>`).join('')}
+    </div>
+    <div class="card" style="margin:0 16px 12px;">
+      <div class="label">Share contact on WhatsApp</div>
+      <p class="muted" style="font-size:12px;margin:0 0 12px;">Both of you need to agree before numbers are shared.</p>
+      <div class="col gap2" style="margin-bottom:10px;">
+        <button class="row between" style="width:100%;padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);border:none;cursor:pointer;color:var(--text);" onclick="toggleMeAgree(${u.id})">
+          <span>You</span>
+          ${a.me ? ICONS.check(16,'var(--greenLight)') : `<span class="muted" style="font-size:12px;">Tap to agree</span>`}
+        </button>
+        <div class="row between" style="padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);">
+          <span>${u.name}</span>
+          ${a.them ? ICONS.check(16,'var(--greenLight)') : `<span class="muted" style="font-size:12px;">Waiting…</span>`}
         </div>
+      </div>
+      ${!a.them ? `<button onclick="simulateThemAgree(${u.id})" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;">(Demo only — simulate ${u.name} agreeing)</button>` : ''}
+      ${a.me && a.them ? `<a class="btn-link row gap2 center" href="https://wa.me/9601234567" style="margin-top:12px;background:var(--green);color:var(--text);padding:12px;border-radius:12px;font-weight:600;font-size:14px;">${ICONS.phone(15,'var(--text)')} Open WhatsApp</a>` : ''}
+    </div>
+    <div class="chat-input-row">
+      <input class="field" style="margin:0;" id="chat-draft" placeholder="Message" onkeydown="if(event.key==='Enter') sendMessage(${u.id})">
+      <button class="icon-btn" onclick="sendMessage(${u.id})">${ICONS.send(18,'var(--text)')}</button>
+    </div>
+  </div>`;
+}
+function toggleMeAgree(id){
+  chatAgree[id].me = !chatAgree[id].me;
+  render();
+}
+function simulateThemAgree(id){
+  chatAgree[id].them = true;
+  render();
+}
+function sendMessage(id){
+  const input = document.getElementById('chat-draft');
+  const text = input.value.trim();
+  if(!text) return;
+  const u = USERS.find(x=>x.id===id);
+  u.messages.push({from:"me", text});
+  const msgs = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble me';
+  bubble.textContent = text;
+  msgs.appendChild(bubble);
+  msgs.scrollTop = msgs.scrollHeight;
+  input.value = '';
+  input.focus();
+}
 
-        <SectionLabel>Lifestyle</SectionLabel>
-        <div className="flex flex-col gap-2 mb-6">
-          {LIFESTYLE_FIELDS.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={f.key} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.surface }}>
-                <span className="flex items-center gap-2 text-sm" style={{ color: C.muted }}>
-                  <Icon size={14} /> {f.label}
-                </span>
-                <span className="text-sm" style={{ color: C.text }}>{u.lifestyle[f.key]}</span>
-              </div>
-            );
-          })}
-        </div>
+/* ---------------------------------------------------------------- wallet */
+function renderWallet(){
+  const me = state.me;
+  return `<div class="screen with-nav">
+    <div class="row between"><h1 class="title">Wallet</h1>${logoSVG(28)}</div>
+    <div class="card" style="margin:16px 0;">
+      <div class="label">Token balance</div>
+      <div class="mono" style="color:var(--red);font-size:32px;">${me.tokenBalance}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">Unlocking a chat costs 30 tokens</div>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="label">Subscription</div>
+      <div>${me.subscription==='none' ? 'No active plan' : me.subscription}</div>
+    </div>
+    <button class="btn" onclick="state.checkout.open=true;render()">Top up wallet</button>
+  </div>`;
+}
 
-        {u.unlocked ? (
-          <Button onClick={() => onMessage(u)}>Message {u.name}</Button>
-        ) : tokenBalance >= 30 ? (
-          <Button onClick={() => onUnlock(u)}>Unlock chat · 30 tokens</Button>
-        ) : (
+/* ---------------------------------------------------------------- checkout */
+function copyFieldHTML(value, mono=true){
+  return `<button class="row between" style="width:100%;padding:12px 14px;border-radius:12px;background:var(--surfaceAlt);border:1px solid var(--line);cursor:pointer;color:var(--text);margin-bottom:8px;" onclick="copyField('${value}', this)">
+    <span class="${mono?'mono':''}">${value}</span>
+    <span class="copy-icon">${ICONS.copy(18,'var(--muted)')}</span>
+  </button>`;
+}
+function renderCheckout(){
+  const co = state.checkout;
+  if(co.step==="submitted"){
+    return `<div class="screen with-nav col" style="align-items:center;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:999px;background:var(--surfaceAlt);border:1px solid var(--greenLight);display:flex;align-items:center;justify-content:center;margin:24px 0 16px;">${ICONS.clock(24,'var(--greenLight)')}</div>
+      <div class="serif" style="font-size:22px;">Pending review</div>
+      <p class="muted" style="font-size:14px;margin:8px 0 4px;">Reference <span class="mono" style="color:var(--text);">${co.ref}</span></p>
+      <p class="muted" style="font-size:14px;max-width:260px;margin-bottom:24px;">We'll credit your ${co.plan.tokens?'tokens':'subscription'} once the transfer is verified — usually within 24 hours.</p>
+      <button class="btn btn-ghost" style="max-width:200px;" onclick="state.checkout={open:false,step:'select',tab:'tokens',plan:null,ref:''};render()">Back to wallet</button>
+    </div>`;
+  }
+  if(co.step==="pay"){
+    return `<div class="screen with-nav">
+      <div class="row gap2" style="margin-bottom:20px;">
+        <button onclick="co_back()" style="background:none;border:none;cursor:pointer;">${ICONS.chevron(20,'var(--muted)')}</button>
+        <span style="font-weight:600;">Transfer ${co.plan.mvr} MVR</span>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="label">Send to</div>
+        ${copyFieldHTML(BANK.bankName,false)}
+        ${copyFieldHTML(BANK.accountName,false)}
+        ${copyFieldHTML(BANK.accountNumber,true)}
+      </div>
+      <div style="border:1px dashed var(--red);background:var(--surfaceAlt);border-radius:18px;margin-bottom:20px;padding:14px;">
+        <div class="label">Put this in your transfer note</div>
+        ${copyFieldHTML(co.ref,true)}
+        <div class="muted" style="font-size:12px;">Without this code, verification takes longer.</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="label">BML transaction ID</div>
+        <input id="co-txid" class="field" placeholder="e.g. TX2026061234567">
+        <div class="label">Or upload a screenshot</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;background:var(--surfaceAlt);border:1px dashed var(--line);color:var(--muted);font-size:14px;cursor:pointer;">
+          ${ICONS.upload(16)} <span id="co-filename">Choose file</span>
+          <input type="file" accept="image/*" style="display:none" onchange="document.getElementById('co-filename').textContent=this.files[0]?.name||'Choose file'">
+        </label>
+      </div>
+      <div id="co-error" style="display:none;color:var(--danger);font-size:13px;margin-bottom:10px;"></div>
+      <button class="btn" onclick="co_submit()">I've sent the transfer</button>
+    </div>`;
+  }
+  const plans = co.tab==="tokens" ? TOKEN_PACKS : SUB_TIERS;
+  return `<div class="screen with-nav">
+    <div class="row gap2" style="margin-bottom:20px;">
+      <button onclick="state.checkout.open=false;render()" style="background:none;border:none;cursor:pointer;">${ICONS.chevron(20,'var(--muted)')}</button>
+      <span style="font-weight:600;">Top up</span>
+    </div>
+    <div class="row gap2" style="margin-bottom:16px;">
+      <button class="btn ${co.tab==='tokens'?'':'btn-ghost'}" style="flex:1;" onclick="state.checkout.tab='tokens';render()">Tokens</button>
+      <button class="btn ${co.tab==='sub'?'':'btn-ghost'}" style="flex:1;" onclick="state.checkout.tab='sub';render()">Unlimited</button>
+    </div>
+    <div class="col gap3">
+      ${plans.map(p=>`
+        <button class="card row between" style="width:100%;text-align:left;cursor:pointer;" onclick='co_choose("${p.id}")'>
           <div>
-            <div className="flex items-center gap-2 mb-2 text-sm" style={{ color: C.danger }}>
-              <AlertCircle size={14} /> Not enough tokens
-            </div>
-            <Button onClick={() => onUnlock(u, true)} variant="ghost">Top up wallet</Button>
+            <div style="font-weight:600;">${p.label}</div>
+            <div class="muted" style="font-size:12px;">${p.tokens? p.tokens+' tokens' : p.desc}</div>
           </div>
-        )}
-      </div>
+          <div class="mono" style="color:var(--red);">${p.mvr} MVR${p.period?'/mo':''}</div>
+        </button>
+      `).join('')}
     </div>
-  );
+  </div>`;
 }
-
-// ---------------------------------------------------------------- chat
-function ChatThread({ u, onBack }) {
-  const [messages, setMessages] = useState(
-    u.id === 2
-      ? [
-          { from: "them", text: "Hey! Saw you're into diving too 🤿" },
-          { from: "me", text: "Yes! Are you based in Malé?" },
-          { from: "them", text: "Hulhumalé side, but happy to meet halfway" },
-        ]
-      : [{ from: "them", text: `Hi, thanks for unlocking the chat!` }]
-  );
-  const [draft, setDraft] = useState("");
-  const [meAgreed, setMeAgreed] = useState(false);
-  const [themAgreed, setThemAgreed] = useState(false);
-  const bothAgreed = meAgreed && themAgreed;
-
-  const send = () => {
-    if (!draft.trim()) return;
-    setMessages([...messages, { from: "me", text: draft.trim() }]);
-    setDraft("");
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col px-4 pt-6 pb-24" style={{ background: C.bg }}>
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack}><ChevronLeft size={20} style={{ color: C.muted }} /></button>
-        <Avatar name={u.name} color={u.color} size={36} />
-        <span style={{ color: C.text, fontWeight: 600 }}>{u.name}</span>
-      </div>
-
-      <div className="flex-1 flex flex-col gap-2 mb-4">
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className="px-3 py-2 rounded-2xl text-sm max-w-[75%]"
-            style={{
-              alignSelf: m.from === "me" ? "flex-end" : "flex-start",
-              background: m.from === "me" ? C.gold : C.surface,
-              color: m.from === "me" ? "#1A1208" : C.text,
-            }}
-          >
-            {m.text}
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-2xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-        <SectionLabel>Share contact on WhatsApp</SectionLabel>
-        <p className="text-xs mb-3" style={{ color: C.muted }}>
-          Both of you need to agree before numbers are shared.
-        </p>
-        <div className="flex flex-col gap-2 mb-3">
-          <button
-            onClick={() => setMeAgreed(!meAgreed)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-sm"
-            style={{ background: C.surfaceAlt }}
-          >
-            <span style={{ color: C.text }}>You</span>
-            {meAgreed ? <Check size={16} style={{ color: C.teal }} /> : <span style={{ color: C.muted, fontSize: 12 }}>Tap to agree</span>}
-          </button>
-          <div className="flex items-center justify-between px-3 py-2 rounded-xl text-sm" style={{ background: C.surfaceAlt }}>
-            <span style={{ color: C.text }}>{u.name}</span>
-            {themAgreed ? <Check size={16} style={{ color: C.teal }} /> : <span style={{ color: C.muted, fontSize: 12 }}>Waiting…</span>}
-          </div>
-        </div>
-        {!themAgreed && (
-          <button onClick={() => setThemAgreed(true)} className="text-xs underline" style={{ color: C.muted }}>
-            (Demo only — simulate {u.name} agreeing)
-          </button>
-        )}
-        {bothAgreed && (
-          <a
-            href="https://wa.me/9601234567"
-            className="mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: C.teal, color: "#0A1F1C" }}
-          >
-            <Phone size={15} /> Open WhatsApp
-          </a>
-        )}
-      </div>
-
-      <div className="fixed bottom-16 left-0 right-0 flex justify-center px-4">
-        <div className="w-full max-w-md flex gap-2">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message"
-            className="flex-1 px-4 py-3 rounded-xl text-sm"
-            style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }}
-          />
-          <button onClick={send} className="px-4 rounded-xl" style={{ background: C.gold }}>
-            <Send size={18} style={{ color: "#1A1208" }} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+function co_choose(id){
+  const plan = [...TOKEN_PACKS, ...SUB_TIERS].find(p=>p.id===id);
+  state.checkout.plan = plan;
+  state.checkout.ref = genRef();
+  state.checkout.step = "pay";
+  render();
 }
-
-// ---------------------------------------------------------------- checkout (wallet)
-function CopyField({ value, monoFont = true }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={async () => {
-        try { await navigator.clipboard.writeText(value); } catch (e) {}
-        setCopied(true); setTimeout(() => setCopied(false), 1500);
-      }}
-      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
-      style={{ background: C.surfaceAlt, border: `1px solid ${C.line}` }}
-    >
-      <span style={{ color: C.text, fontFamily: monoFont ? mono : undefined }}>{value}</span>
-      {copied ? <Check size={18} style={{ color: C.teal }} /> : <Copy size={18} style={{ color: C.muted }} />}
-    </button>
-  );
-}
-
-function Checkout({ onBack, onPaid }) {
-  const [step, setStep] = useState("select");
-  const [tab, setTab] = useState("tokens");
-  const [plan, setPlan] = useState(null);
-  const [refCode, setRefCode] = useState("");
-  const [txId, setTxId] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [error, setError] = useState("");
-  const plans = tab === "tokens" ? TOKEN_PACKS : SUB_TIERS;
-
-  const choose = (p) => { setPlan(p); setRefCode(genRef()); setStep("pay"); };
-  const submit = () => {
-    if (!txId.trim() && !fileName) { setError("Add a transaction ID or screenshot."); return; }
-    setStep("submitted");
-  };
-
-  if (step === "submitted") {
-    return (
-      <div className="px-4 pt-6 pb-24 flex flex-col items-center text-center">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.surfaceAlt, border: `1px solid ${C.teal}` }}>
-          <Clock size={24} style={{ color: C.teal }} />
-        </div>
-        <div style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Pending review</div>
-        <p className="text-sm mt-2 mb-1" style={{ color: C.muted }}>
-          Reference <span style={{ color: C.text, fontFamily: mono }}>{refCode}</span>
-        </p>
-        <p className="text-sm mb-6 max-w-xs" style={{ color: C.muted }}>
-          We'll credit your {plan.tokens ? "tokens" : "subscription"} once the transfer is verified — usually within 24 hours.
-        </p>
-        <Button onClick={onBack} variant="ghost">Back to wallet</Button>
-      </div>
-    );
+function co_back(){ state.checkout.step="select"; render(); }
+function co_submit(){
+  const tx = (document.getElementById('co-txid')||{}).value || "";
+  const fname = (document.getElementById('co-filename')||{}).textContent || "";
+  if(!tx.trim() && fname==="Choose file"){
+    const err = document.getElementById('co-error');
+    err.style.display = "block";
+    err.innerHTML = `${ICONS.alert(14)} Add a transaction ID or screenshot.`;
+    return;
   }
-
-  if (step === "pay") {
-    return (
-      <div className="px-4 pt-6 pb-24">
-        <BackHeader title={`Transfer ${plan.mvr} MVR`} onBack={() => setStep("select")} />
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-          <SectionLabel>Send to</SectionLabel>
-          <div className="flex flex-col gap-2">
-            <CopyField value={BANK.bankName} monoFont={false} />
-            <CopyField value={BANK.accountName} monoFont={false} />
-            <CopyField value={BANK.accountNumber} />
-          </div>
-        </div>
-        <div className="rounded-2xl mb-5 overflow-hidden" style={{ border: `1px dashed ${C.gold}`, background: C.surfaceAlt }}>
-          <div className="px-4 pt-3"><SectionLabel>Put this in your transfer note</SectionLabel></div>
-          <div className="px-4 pb-1"><CopyField value={refCode} /></div>
-          <div className="px-4 pb-3 text-xs" style={{ color: C.muted }}>Without this code, verification takes longer.</div>
-        </div>
-        <div className="rounded-2xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-          <div className="text-xs mb-2" style={{ color: C.muted }}>BML transaction ID</div>
-          <input
-            value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="e.g. TX2026061234567"
-            className="w-full px-3 py-2 rounded-lg text-sm mb-3"
-            style={{ background: C.surfaceAlt, color: C.text, border: `1px solid ${C.line}` }}
-          />
-          <div className="text-xs mb-2" style={{ color: C.muted }}>Or upload a screenshot</div>
-          <label className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm cursor-pointer" style={{ background: C.surfaceAlt, border: `1px dashed ${C.line}`, color: C.muted }}>
-            <Upload size={16} /> {fileName || "Choose file"}
-            <input type="file" accept="image/*" onChange={(e) => setFileName(e.target.files?.[0]?.name || "")} className="hidden" />
-          </label>
-        </div>
-        {error && <div className="flex items-center gap-2 mb-3 text-sm" style={{ color: C.danger }}><AlertCircle size={14} /> {error}</div>}
-        <Button onClick={submit}>I've sent the transfer</Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 pt-6 pb-24">
-      <BackHeader title="Top up" onBack={onBack} />
-      <div className="flex gap-2 mb-4">
-        {["tokens", "sub"].map((t) => (
-          <button
-            key={t} onClick={() => setTab(t)}
-            className="flex-1 py-2 rounded-xl text-sm font-medium"
-            style={{ background: tab === t ? C.gold : C.surface, color: tab === t ? "#1A1208" : C.muted }}
-          >
-            {t === "tokens" ? "Tokens" : "Unlimited"}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-col gap-3">
-        {plans.map((p) => (
-          <button key={p.id} onClick={() => choose(p)} className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-            <div>
-              <div style={{ color: C.text, fontWeight: 600 }}>{p.label}</div>
-              <div className="text-xs" style={{ color: C.muted }}>{p.tokens ? `${p.tokens} tokens` : p.desc}</div>
-            </div>
-            <div style={{ color: C.gold, fontFamily: mono }}>{p.mvr} MVR{p.period ? "/mo" : ""}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  state.checkout.step = "submitted";
+  render();
 }
 
-// ---------------------------------------------------------------- profile edit
-function FieldGroup({ label, options, value, onChange }) {
-  return (
-    <div className="mb-4">
-      <SectionLabel>{label}</SectionLabel>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button
-            key={o} onClick={() => onChange(o)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium"
-            style={{ background: value === o ? C.gold : C.surface, color: value === o ? "#1A1208" : C.muted, border: `1px solid ${value === o ? C.gold : C.line}` }}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+/* ---------------------------------------------------------------- bottom nav */
+function renderNav(){
+  const items = [
+    {id:"discover", icon:"heart", label:"Discover"},
+    {id:"chats", icon:"message", label:"Chats"},
+    {id:"wallet", icon:"wallet", label:"Wallet"},
+    {id:"profile", icon:"user", label:"Profile"},
+  ];
+  return `<div class="nav">
+    ${items.map(it=>`
+      <button class="${state.tab===it.id?'active':''}" onclick="setTab('${it.id}')">
+        ${ICONS[it.icon](20, state.tab===it.id?'var(--red)':'var(--muted)')}
+        <span>${it.label}</span>
+      </button>
+    `).join('')}
+  </div>`;
+}
+function setTab(t){
+  state.tab = t;
+  state.checkout.open = false;
+  render();
 }
 
-function ProfileForm({ me, setMe, title, ctaLabel, onSubmit, showSavedToast }) {
-  const [saved, setSaved] = useState(false);
-  const update = (k, v) => setMe({ ...me, [k]: v });
-  const updateLifestyle = (k, v) => setMe({ ...me, lifestyle: { ...me.lifestyle, [k]: v } });
-  const handleSubmit = () => {
-    if (showSavedToast) { setSaved(true); setTimeout(() => setSaved(false), 1500); }
-    if (onSubmit) onSubmit();
-  };
-
-  return (
-    <div className="px-4 pt-6 pb-28">
-      <div className="flex items-center justify-between mb-5">
-        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>{title}</span>
-        <LogoMark size={28} />
-      </div>
-
-      <div className="flex flex-col items-center mb-6">
-        <div className="relative">
-          <Avatar name={me.name || "?"} color={C.gold} size={88} />
-          <div className="absolute -bottom-1 -right-1 rounded-full p-1.5" style={{ background: C.teal }}>
-            <Camera size={14} style={{ color: "#0A1F1C" }} />
-          </div>
-        </div>
-        <span className="text-xs mt-2" style={{ color: C.muted }}>Tap to add a photo</span>
-      </div>
-
-      <SectionLabel>Nickname</SectionLabel>
-      <input value={me.name} onChange={(e) => update("name", e.target.value)} placeholder="What should people call you?" className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
-
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1">
-          <SectionLabel>Age</SectionLabel>
-          <input type="number" value={me.age} onChange={(e) => update("age", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
-        </div>
-        <div className="flex-1">
-          <SectionLabel>Island</SectionLabel>
-          <input value={me.island} onChange={(e) => update("island", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
-        </div>
-      </div>
-
-      <FieldGroup label="Gender" options={["Woman", "Man"]} value={me.gender} onChange={(v) => update("gender", v)} />
-      <FieldGroup label="Looking for" options={["Women", "Men", "Everyone"]} value={me.lookingFor} onChange={(v) => update("lookingFor", v)} />
-      <FieldGroup label="Relationship status" options={STATUS_OPTIONS} value={me.status} onChange={(v) => update("status", v)} />
-      <FieldGroup label="Looking to find" options={INTENT_OPTIONS} value={me.intent} onChange={(v) => update("intent", v)} />
-
-      <SectionLabel>Work</SectionLabel>
-      <input value={me.work} onChange={(e) => update("work", e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
-
-      <SectionLabel>Bio</SectionLabel>
-      <textarea value={me.bio} onChange={(e) => update("bio", e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm mb-5" style={{ background: C.surface, color: C.text, border: `1px solid ${C.line}` }} />
-
-      <SectionLabel>Lifestyle — private, shown only to matches you chat with</SectionLabel>
-      <div className="flex flex-col gap-3 mb-6">
-        {LIFESTYLE_FIELDS.map((f) => (
-          <div key={f.key}>
-            <div className="text-sm mb-1.5" style={{ color: C.text }}>{f.label}</div>
-            <div className="flex gap-2">
-              {ANSWER_OPTIONS.map((o) => (
-                <button
-                  key={o} onClick={() => updateLifestyle(f.key, o)}
-                  className="px-3 py-1.5 rounded-full text-xs"
-                  style={{ background: me.lifestyle[f.key] === o ? C.teal : C.surface, color: me.lifestyle[f.key] === o ? "#0A1F1C" : C.muted, border: `1px solid ${me.lifestyle[f.key] === o ? C.teal : C.line}` }}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Button onClick={handleSubmit}>
-        {saved ? "Saved ✓" : ctaLabel}
-      </Button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- wallet tab
-function WalletTab({ me, onTopUp }) {
-  return (
-    <div className="px-4 pt-6 pb-28">
-      <div className="flex items-center justify-between mb-5">
-        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Wallet</span>
-        <LogoMark size={28} />
-      </div>
-      <div className="rounded-2xl p-5 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-        <SectionLabel>Token balance</SectionLabel>
-        <div style={{ color: C.gold, fontFamily: mono, fontSize: 32 }}>{me.tokenBalance}</div>
-        <div className="text-xs mt-1" style={{ color: C.muted }}>Unlocking a chat costs 30 tokens</div>
-      </div>
-      <div className="rounded-2xl p-5 mb-5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-        <SectionLabel>Subscription</SectionLabel>
-        <div style={{ color: C.text }}>{me.subscription === "none" ? "No active plan" : me.subscription}</div>
-      </div>
-      <Button onClick={onTopUp}>Top up wallet</Button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- chats tab
-function ChatsTab({ users, onOpen }) {
-  const unlocked = users.filter((u) => u.unlocked);
-  return (
-    <div className="px-4 pt-6 pb-28">
-      <div className="flex items-center justify-between mb-5">
-        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Chats</span>
-        <LogoMark size={28} />
-      </div>
-      {unlocked.length === 0 && (
-        <p className="text-sm" style={{ color: C.muted }}>Unlock a chat from Discover to start talking.</p>
-      )}
-      <div className="flex flex-col gap-2">
-        {unlocked.map((u) => (
-          <button key={u.id} onClick={() => onOpen(u)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-            <Avatar name={u.name} color={u.color} size={44} />
-            <div className="flex-1 min-w-0">
-              <div style={{ color: C.text, fontWeight: 600 }}>{u.name}</div>
-              <div className="text-xs truncate" style={{ color: C.muted }}>Tap to continue the conversation</div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- discover tab
-function DiscoverTab({ users, onOpen, tokenBalance }) {
-  return (
-    <div className="px-4 pt-6 pb-28">
-      <div className="flex items-center justify-between mb-1">
-        <span style={{ color: C.text, fontFamily: serif, fontSize: 22, fontWeight: 600 }}>Discover</span>
-        <LogoMark size={28} />
-      </div>
-      <div className="text-xs mb-4" style={{ color: C.muted }}>{tokenBalance} tokens available</div>
-      <div className="flex flex-col gap-3">
-        {users.map((u) => <DiscoverCard key={u.id} u={u} onOpen={onOpen} />)}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- app
-export default function App() {
-  const [phase, setPhase] = useState("splash"); // splash | onboarding | app
-  const [tab, setTab] = useState("discover");
-  const [users, setUsers] = useState(USERS);
-  const [activeProfile, setActiveProfile] = useState(null);
-  const [activeChat, setActiveChat] = useState(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [me, setMe] = useState({
-    name: "", age: "", island: "", gender: "Woman", lookingFor: "Men",
-    status: "Single", intent: "Dating", work: "", bio: "",
-    lifestyle: { smoke: "No", drink: "No", party: "No" },
-    tokenBalance: 30, subscription: "none",
-  });
-
-  const unlock = (u, goTopUp) => {
-    if (goTopUp) { setActiveProfile(null); setTab("wallet"); setCheckoutOpen(true); return; }
-    if (me.tokenBalance < 30) return;
-    setMe({ ...me, tokenBalance: me.tokenBalance - 30 });
-    setUsers(users.map((x) => (x.id === u.id ? { ...x, unlocked: true } : x)));
-    setActiveProfile({ ...u, unlocked: true });
-  };
-  const messageUser = (u) => { setActiveProfile(null); setActiveChat(u); };
-
-  if (phase === "splash") return <Splash onContinue={() => setPhase("onboarding")} />;
-  if (phase === "onboarding") {
-    return (
-      <div style={{ background: C.bg, minHeight: "100vh" }}>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
-          body { font-family: 'IBM Plex Sans', sans-serif; }
-        `}</style>
-        <div className="max-w-md mx-auto" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-          <ProfileForm me={me} setMe={setMe} title="Tell us about yourself" ctaLabel="Start exploring" onSubmit={() => setPhase("app")} />
-        </div>
-      </div>
-    );
-  }
-  if (activeChat) return <ChatThread u={activeChat} onBack={() => setActiveChat(null)} />;
-
-  return (
-    <div style={{ background: C.bg, minHeight: "100vh" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
-        body { font-family: 'IBM Plex Sans', sans-serif; }
-        input:focus, textarea:focus, button:focus-visible { outline: 2px solid ${C.teal}; outline-offset: 2px; }
-      `}</style>
-      <div className="max-w-md mx-auto relative" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-        {tab === "discover" && (
-          <DiscoverTab users={users} onOpen={setActiveProfile} tokenBalance={me.tokenBalance} />
-        )}
-        {tab === "chats" && <ChatsTab users={users} onOpen={setActiveChat} />}
-        {tab === "wallet" && !checkoutOpen && <WalletTab me={me} onTopUp={() => setCheckoutOpen(true)} />}
-        {tab === "wallet" && checkoutOpen && <Checkout onBack={() => setCheckoutOpen(false)} />}
-        {tab === "profile" && <ProfileForm me={me} setMe={setMe} title="Your profile" ctaLabel="Save changes" showSavedToast />}
-
-        {activeProfile && (
-          <ProfileSheet
-            u={activeProfile}
-            tokenBalance={me.tokenBalance}
-            onClose={() => setActiveProfile(null)}
-            onUnlock={unlock}
-            onMessage={messageUser}
-          />
-        )}
-
-        <BottomNav tab={tab} setTab={(t) => { setTab(t); setCheckoutOpen(false); }} />
-      </div>
-    </div>
-  );
-}
+/* ---------------------------------------------------------------- init */
+render();
+</script>
+</body>
+</html>
