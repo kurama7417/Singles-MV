@@ -7,8 +7,8 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
   :root{
-    --bg:#0A1F1C; --surface:#102A26; --surfaceAlt:#15332E; --red:#C8313A;
-    --green:#1C7A3E; --text:#F2EFE6; --muted:#8FA39E; --danger:#E0973B; --line:#1E3D37; --greenLight:#4FB876;
+    --bg:#0A1F1C; --surface:#102A26; --surfaceAlt:#15332E; --gold:#D4A24C;
+    --teal:#2BA89A; --text:#F2EFE6; --muted:#8FA39E; --danger:#C75C4D; --line:#1E3D37;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:#04100E;font-family:'IBM Plex Sans',sans-serif;color:var(--text);}
@@ -34,35 +34,35 @@
   .label{font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;}
   .field{width:100%;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:14px;margin-bottom:16px;}
-  .field:focus,button:focus-visible{outline:2px solid var(--greenLight);outline-offset:2px;}
+  .field:focus,button:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
   textarea.field{resize:vertical;}
-  .btn{display:block;width:100%;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;background:var(--red);color:var(--text);cursor:pointer;}
+  .btn{display:block;width:100%;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;background:var(--gold);color:#1A1208;cursor:pointer;}
   .btn:disabled{opacity:.5;cursor:default;}
   .btn-ghost{background:var(--surfaceAlt);color:var(--text);border:1px solid var(--line);}
   .pill{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;}
-  .pill.active{background:var(--red);color:var(--text);border-color:var(--red);}
+  .pill.active{background:var(--gold);color:#1A1208;border-color:var(--gold);}
   .pill-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
   .tagpill{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
-  .tag-green{background:rgba(28,122,62,.18);color:#4FB876;}
-  .tag-red{background:rgba(200,49,58,.18);color:var(--red);}
+  .tag-teal{background:rgba(43,168,154,.15);color:var(--teal);}
+  .tag-gold{background:rgba(212,162,76,.15);color:var(--gold);}
   .tag-muted{background:var(--surfaceAlt);color:var(--muted);}
-  .avatar{border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text);flex-shrink:0;position:relative;background-size:cover;background-position:center;}
+  .avatar{border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1A1208;flex-shrink:0;position:relative;background-size:cover;background-position:center;}
   .lock-badge{position:absolute;bottom:-2px;right:-2px;background:var(--surface);border:1px solid var(--line);border-radius:999px;display:flex;align-items:center;justify-content:center;}
   .nav{position:absolute;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:5;}
   .nav button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:11px;}
-  .nav button.active{color:var(--red);}
+  .nav button.active{color:var(--gold);}
   .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20;}
   .modal-sheet{width:100%;max-height:86%;overflow-y:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:16px;}
   .chat-screen{position:absolute;inset:0;display:flex;flex-direction:column;}
   .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;}
   .bubble{padding:8px 12px;border-radius:16px;font-size:14px;max-width:75%;}
-  .bubble.me{align-self:flex-end;background:var(--red);color:var(--text);}
+  .bubble.me{align-self:flex-end;background:var(--gold);color:#1A1208;}
   .bubble.them{align-self:flex-start;background:var(--surface);color:var(--text);}
   .chat-input-row{display:flex;gap:8px;padding:12px 16px 16px;}
   .chat-input-row input{flex:1;}
-  .icon-btn{background:var(--red);border:none;border-radius:10px;width:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .icon-btn{background:var(--gold);border:none;border-radius:10px;width:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
   a.btn-link{text-decoration:none;}
-  .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:var(--green);color:var(--text);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;z-index:30;}
+  .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:var(--teal);color:#0A1F1C;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;z-index:30;}
 </style>
 </head>
 <body>
@@ -93,18 +93,17 @@ const ICONS = {
 function logoSVG(size=40){
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none">
     <rect width="64" height="64" rx="16" fill="var(--surface)"/>
-    <path d="M32,49 C19,40 11,30 11,20 C11,11 19,6 26,10 C29,12 31,16 32,19 C33,16 35,12 38,10 C45,6 53,11 53,20 C53,30 45,40 32,49 Z" fill="var(--red)"/>
-    <rect x="19" y="23" width="26" height="15" rx="3" fill="var(--green)"/>
-    <circle cx="34.5" cy="30.5" r="5.4" fill="#FFFFFF"/>
-    <circle cx="36.6" cy="29" r="4.4" fill="var(--green)"/>
+    <path d="M32,49 C19,40 11,30 11,20 C11,11 19,6 26,10 C29,12 31,16 32,19 C33,16 35,12 38,10 C45,6 53,11 53,20 C53,30 45,40 32,49 Z" fill="#C8313A"/>
+    <circle cx="35" cy="27" r="7.5" fill="#FFFFFF"/>
+    <circle cx="37.6" cy="24.7" r="6.2" fill="#C8313A"/>
   </svg>`;
 }
 function wordmark(size=22){
-  return `<span style="font-family:'Fraunces',serif;font-weight:600;font-size:${size}px;">Singles <span style="color:var(--red)">MV</span></span>`;
+  return `<span style="font-family:'Fraunces',serif;font-weight:600;font-size:${size}px;">Singles <span style="color:var(--gold)">MV</span></span>`;
 }
 
 /* ---------------------------------------------------------------- data */
-const PALETTE = ['var(--red)','var(--green)','#5C7AA0','#8FA39E'];
+const PALETTE = ['var(--gold)','var(--teal)','#C75C4D','#8FA39E'];
 let USERS = [
   { id:1, name:"Aishath", age:26, island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
     bio:"Quiet evenings, good food, and someone who follows through on plans.",
@@ -190,7 +189,7 @@ function showToast(msg){
 function copyField(value, btn){
   navigator.clipboard?.writeText(value).catch(()=>{});
   const icon = btn.querySelector('.copy-icon');
-  if(icon){ icon.innerHTML = ICONS.check(18,'var(--greenLight)'); setTimeout(()=>{ icon.innerHTML = ICONS.copy(18,'var(--muted)'); }, 1400); }
+  if(icon){ icon.innerHTML = ICONS.check(18,'var(--teal)'); setTimeout(()=>{ icon.innerHTML = ICONS.copy(18,'var(--muted)'); }, 1400); }
 }
 
 /* ---------------------------------------------------------------- render dispatch */
@@ -216,7 +215,7 @@ function renderSplash(){
     ${logoSVG(88)}
     <div style="margin-top:20px">${wordmark(28)}</div>
     <p class="muted" style="margin:8px 0 0;font-size:14px;">Made for the Maldives</p>
-    <div class="tagpill tag-red" style="margin-top:16px;">Sign up free — get 30 tokens, enough to unlock your first chat</div>
+    <div class="tagpill tag-gold" style="margin-top:16px;">Sign up free — get 30 tokens, enough to unlock your first chat</div>
     <div style="width:100%;max-width:260px;margin-top:32px;">
       <button class="btn" onclick="state.phase='onboarding';render()">Get started</button>
     </div>
@@ -234,9 +233,9 @@ function renderProfileForm({title, cta, mode}){
 
     <div class="col" style="align-items:center;margin-bottom:24px;">
       <div style="position:relative;cursor:pointer;" onclick="document.getElementById('f-photo').click()">
-        ${avatarHTML(me.name||'?', 'var(--red)', 88, me.photoData)}
-        <div style="position:absolute;bottom:-2px;right:-2px;background:var(--green);border-radius:999px;padding:6px;display:flex;">
-          ${ICONS.camera(14,'var(--text)')}
+        ${avatarHTML(me.name||'?', 'var(--gold)', 88, me.photoData)}
+        <div style="position:absolute;bottom:-2px;right:-2px;background:var(--teal);border-radius:999px;padding:6px;display:flex;">
+          ${ICONS.camera(14,'#0A1F1C')}
         </div>
       </div>
       <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="handlePhoto(event)">
@@ -321,10 +320,10 @@ function renderDiscover(){
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${u.name}, ${u.age}</div>
             <div class="row gap2 muted" style="font-size:12px;">${ICONS.mappin(12)} ${u.island} · ${u.work}</div>
-            <div style="margin-top:6px;"><span class="tagpill tag-green">${u.intent}</span></div>
+            <div style="margin-top:6px;"><span class="tagpill tag-teal">${u.intent}</span></div>
           </div>
           ${u.unlocked
-            ? `<span class="tagpill tag-green">${ICONS.check(11)} Chat open</span>`
+            ? `<span class="tagpill tag-teal">${ICONS.check(11)} Chat open</span>`
             : `<span class="tagpill tag-muted">${ICONS.lock(11)} Locked</span>`}
         </button>
       `).join('')}
@@ -345,7 +344,7 @@ function renderProfileSheet(id){
         <div class="serif" style="font-size:20px;margin-top:12px;">${u.name}, ${u.age}</div>
         <div class="row gap2 muted" style="font-size:13px;">${ICONS.mappin(13)} ${u.island}</div>
         <div class="row gap2" style="margin-top:10px;">
-          <span class="tagpill tag-red">${u.intent}</span>
+          <span class="tagpill tag-gold">${u.intent}</span>
           <span class="tagpill tag-muted">${u.status}</span>
         </div>
       </div>
@@ -432,19 +431,19 @@ function renderChatThread(id){
       <div class="col gap2" style="margin-bottom:10px;">
         <button class="row between" style="width:100%;padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);border:none;cursor:pointer;color:var(--text);" onclick="toggleMeAgree(${u.id})">
           <span>You</span>
-          ${a.me ? ICONS.check(16,'var(--greenLight)') : `<span class="muted" style="font-size:12px;">Tap to agree</span>`}
+          ${a.me ? ICONS.check(16,'var(--teal)') : `<span class="muted" style="font-size:12px;">Tap to agree</span>`}
         </button>
         <div class="row between" style="padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);">
           <span>${u.name}</span>
-          ${a.them ? ICONS.check(16,'var(--greenLight)') : `<span class="muted" style="font-size:12px;">Waiting…</span>`}
+          ${a.them ? ICONS.check(16,'var(--teal)') : `<span class="muted" style="font-size:12px;">Waiting…</span>`}
         </div>
       </div>
       ${!a.them ? `<button onclick="simulateThemAgree(${u.id})" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;">(Demo only — simulate ${u.name} agreeing)</button>` : ''}
-      ${a.me && a.them ? `<a class="btn-link row gap2 center" href="https://wa.me/9601234567" style="margin-top:12px;background:var(--green);color:var(--text);padding:12px;border-radius:12px;font-weight:600;font-size:14px;">${ICONS.phone(15,'var(--text)')} Open WhatsApp</a>` : ''}
+      ${a.me && a.them ? `<a class="btn-link row gap2 center" href="https://wa.me/9601234567" style="margin-top:12px;background:var(--teal);color:#0A1F1C;padding:12px;border-radius:12px;font-weight:600;font-size:14px;">${ICONS.phone(15,'#0A1F1C')} Open WhatsApp</a>` : ''}
     </div>
     <div class="chat-input-row">
       <input class="field" style="margin:0;" id="chat-draft" placeholder="Message" onkeydown="if(event.key==='Enter') sendMessage(${u.id})">
-      <button class="icon-btn" onclick="sendMessage(${u.id})">${ICONS.send(18,'var(--text)')}</button>
+      <button class="icon-btn" onclick="sendMessage(${u.id})">${ICONS.send(18,'#1A1208')}</button>
     </div>
   </div>`;
 }
@@ -479,7 +478,7 @@ function renderWallet(){
     <div class="row between"><h1 class="title">Wallet</h1>${logoSVG(28)}</div>
     <div class="card" style="margin:16px 0;">
       <div class="label">Token balance</div>
-      <div class="mono" style="color:var(--red);font-size:32px;">${me.tokenBalance}</div>
+      <div class="mono" style="color:var(--gold);font-size:32px;">${me.tokenBalance}</div>
       <div class="muted" style="font-size:12px;margin-top:4px;">Unlocking a chat costs 30 tokens</div>
     </div>
     <div class="card" style="margin-bottom:20px;">
@@ -501,7 +500,7 @@ function renderCheckout(){
   const co = state.checkout;
   if(co.step==="submitted"){
     return `<div class="screen with-nav col" style="align-items:center;text-align:center;">
-      <div style="width:56px;height:56px;border-radius:999px;background:var(--surfaceAlt);border:1px solid var(--greenLight);display:flex;align-items:center;justify-content:center;margin:24px 0 16px;">${ICONS.clock(24,'var(--greenLight)')}</div>
+      <div style="width:56px;height:56px;border-radius:999px;background:var(--surfaceAlt);border:1px solid var(--teal);display:flex;align-items:center;justify-content:center;margin:24px 0 16px;">${ICONS.clock(24,'var(--teal)')}</div>
       <div class="serif" style="font-size:22px;">Pending review</div>
       <p class="muted" style="font-size:14px;margin:8px 0 4px;">Reference <span class="mono" style="color:var(--text);">${co.ref}</span></p>
       <p class="muted" style="font-size:14px;max-width:260px;margin-bottom:24px;">We'll credit your ${co.plan.tokens?'tokens':'subscription'} once the transfer is verified — usually within 24 hours.</p>
@@ -520,7 +519,7 @@ function renderCheckout(){
         ${copyFieldHTML(BANK.accountName,false)}
         ${copyFieldHTML(BANK.accountNumber,true)}
       </div>
-      <div style="border:1px dashed var(--red);background:var(--surfaceAlt);border-radius:18px;margin-bottom:20px;padding:14px;">
+      <div style="border:1px dashed var(--gold);background:var(--surfaceAlt);border-radius:18px;margin-bottom:20px;padding:14px;">
         <div class="label">Put this in your transfer note</div>
         ${copyFieldHTML(co.ref,true)}
         <div class="muted" style="font-size:12px;">Without this code, verification takes longer.</div>
@@ -555,7 +554,7 @@ function renderCheckout(){
             <div style="font-weight:600;">${p.label}</div>
             <div class="muted" style="font-size:12px;">${p.tokens? p.tokens+' tokens' : p.desc}</div>
           </div>
-          <div class="mono" style="color:var(--red);">${p.mvr} MVR${p.period?'/mo':''}</div>
+          <div class="mono" style="color:var(--gold);">${p.mvr} MVR${p.period?'/mo':''}</div>
         </button>
       `).join('')}
     </div>
@@ -593,7 +592,7 @@ function renderNav(){
   return `<div class="nav">
     ${items.map(it=>`
       <button class="${state.tab===it.id?'active':''}" onclick="setTab('${it.id}')">
-        ${ICONS[it.icon](20, state.tab===it.id?'var(--red)':'var(--muted)')}
+        ${ICONS[it.icon](20, state.tab===it.id?'var(--gold)':'var(--muted)')}
         <span>${it.label}</span>
       </button>
     `).join('')}
