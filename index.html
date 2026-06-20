@@ -183,25 +183,67 @@ const ATOLLS_DATA = {
 };
 const ATOLLS = Object.keys(ATOLLS_DATA);
 const PALETTE = ['var(--gold)','var(--teal)','#C75C4D','#8FA39E'];
-let USERS = [
-  { id:1, name:"Aishath", age:26, gender:"Woman", atoll:"Kaafu", island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
+// Fallback data only — used if Firebase isn't configured yet, so the UI never shows blank.
+const MOCK_USERS = [
+  { id:"mock-1", name:"Aishath", age:26, gender:"Woman", atoll:"Kaafu", island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
     bio:"Quiet evenings, good food, and someone who follows through on plans.",
     matchFactors:{religion:3, mobility:1, family:3, timeline:3, socialRhythm:1, privacy:2},
-    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[0], messages:[] },
-  { id:2, name:"Ibrahim", age:29, gender:"Man", atoll:"Kaafu", island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
+    lifestyle:{smoke:"No",drink:"No",party:"No"} },
+  { id:"mock-2", name:"Ibrahim", age:29, gender:"Man", atoll:"Kaafu", island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
     bio:"Out on the water most weekends. Looking for someone to drag along.",
     matchFactors:{religion:1, mobility:4, family:1, timeline:1, socialRhythm:3, privacy:3},
-    lifestyle:{smoke:"No",drink:"Prefer not to say",party:"No"}, unlocked:true, color:PALETTE[1],
-    messages:[{from:"them",text:"Hey! Saw you're into diving too 🤿"},{from:"me",text:"Yes! Are you based in Malé?"},{from:"them",text:"Hulhumalé side, but happy to meet halfway"}] },
-  { id:3, name:"Fathimath", age:24, gender:"Woman", atoll:"Seenu", island:"Hithadhoo", work:"Nurse", status:"Divorced", intent:"Casual",
+    lifestyle:{smoke:"No",drink:"Prefer not to say",party:"No"} },
+  { id:"mock-3", name:"Fathimath", age:24, gender:"Woman", atoll:"Seenu", island:"Hithadhoo", work:"Nurse", status:"Divorced", intent:"Casual",
     bio:"Just moved back from Malé. Taking things slow and easy.",
     matchFactors:{religion:2, mobility:2, family:2, timeline:1, socialRhythm:2, privacy:2},
-    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[2], messages:[] },
-  { id:4, name:"Hassan", age:31, gender:"Man", atoll:"Kaafu", island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
+    lifestyle:{smoke:"No",drink:"No",party:"No"} },
+  { id:"mock-4", name:"Hassan", age:31, gender:"Man", atoll:"Kaafu", island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
     bio:"Ready to settle down. Family means everything to me.",
     matchFactors:{religion:4, mobility:1, family:4, timeline:4, socialRhythm:1, privacy:1},
-    lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[3], messages:[] },
+    lifestyle:{smoke:"No",drink:"No",party:"No"} },
 ];
+let USERS = [];          // live cache, populated from Firestore by loadUsers()
+let usersLoaded = false;
+let unlockedPartners = new Set(); // uids of people whose chat I've unlocked
+function hashCode(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function colorFor(uid){ return PALETTE[hashCode(String(uid)) % PALETTE.length]; }
+function chatIdFor(uidA, uidB){ return [uidA, uidB].sort().join('_'); }
+function loadUsers(force){
+  if(usersLoaded && !force) return Promise.resolve(USERS);
+  if(!db){
+    USERS = MOCK_USERS;
+    usersLoaded = true;
+    return Promise.resolve(USERS);
+  }
+  return db.collection('users').get().then(snap=>{
+    USERS = snap.docs
+      .map(d=>({ id:d.id, ...d.data() }))
+      .filter(u=>u.id !== state.uid && u.name);
+    usersLoaded = true;
+    return USERS;
+  }).catch(err=>{
+    console.error('Failed to load users:', err);
+    USERS = MOCK_USERS;
+    usersLoaded = true;
+    return USERS;
+  });
+}
+function loadUnlockedPartners(){
+  if(!db || !state.uid) return Promise.resolve();
+  return db.collection('chats').where('participants','array-contains', state.uid).where('unlocked','==',true).get()
+    .then(snap=>{
+      unlockedPartners = new Set();
+      snap.docs.forEach(d=>{
+        const p = d.data().participants || [];
+        const other = p.find(x=>x!==state.uid);
+        if(other) unlockedPartners.add(other);
+      });
+    }).catch(err=>console.error('Failed to load chats:', err));
+}
 const MATCH_FACTORS = [
   {key:"religion", label:"Religion & practice level", levels:["Not practicing","Culturally religious","Practicing","Highly devout"]},
   {key:"mobility", label:"Island mobility", levels:["Stays on home island","Open to nearby islands","Open to other atolls","Open to relocating"]},
@@ -214,8 +256,8 @@ function matchScore(me, u){
   if(!me.matchFactors || !u.matchFactors) return 50;
   let total = 0;
   MATCH_FACTORS.forEach(f=>{
-    const a = me.matchFactors[f.key] || 1;
-    const b = u.matchFactors[f.key] || 1;
+    const a = (me.matchFactors && me.matchFactors[f.key]) || 1;
+    const b = (u.matchFactors && u.matchFactors[f.key]) || 1;
     total += 1 - Math.abs(a-b)/3;
   });
   return Math.round((total/MATCH_FACTORS.length)*100);
@@ -250,15 +292,15 @@ let state = {
   checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
   me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
        status:"", intent:"", matchFactors:{}, lifestyle:{smoke:"",drink:"",party:""},
-       photoData:null, tokenBalance:30, subscription:"none" },
+       photoURL:null, photoPreview:null, tokenBalance:30, subscription:"none" },
 };
 
 /* ---------------------------------------------------------------- helpers */
-function avatarHTML(name, color, size, photoData, textColor){
-  const style = photoData
-    ? `width:${size}px;height:${size}px;background-image:url(${photoData})`
+function avatarHTML(name, color, size, photoURL, textColor){
+  const style = photoURL
+    ? `width:${size}px;height:${size}px;background-image:url(${photoURL})`
     : `width:${size}px;height:${size}px;background:${color}${textColor?`;color:${textColor}`:''}`;
-  return `<div class="avatar" style="${style};font-size:${size*0.4}px">${photoData?'':(name[0]||'?')}</div>`;
+  return `<div class="avatar" style="${style};font-size:${size*0.4}px">${photoURL?'':(name[0]||'?')}</div>`;
 }
 function pillGroup(group, options, value){
   return `<div class="pill-group" data-group="${group}" data-value="${value}">
@@ -313,7 +355,7 @@ function validateProfileForm(){
   if(!d.lifestyle.smoke) missing.push({group:'lifestyle-smoke', label:'Smokes'});
   if(!d.lifestyle.drink) missing.push({group:'lifestyle-drink', label:'Drinks alcohol'});
   if(!d.lifestyle.party) missing.push({group:'lifestyle-party', label:'Parties / substances'});
-  if(!state.me.photoData) missing.push({special:'photo', label:'Photo'});
+  if(!state.me.photoURL && !state.me.photoPreview) missing.push({special:'photo', label:'Photo'});
   return { valid: missing.length===0, missing, data:d };
 }
 function applyFormErrors(missing){
@@ -435,6 +477,8 @@ function handleAuthSuccess(result){
     if(docSnap.exists && docSnap.data().name){
       state.me = {...state.me, ...docSnap.data()};
       state.phase = "app";
+      loadUsers();
+      loadUnlockedPartners();
     } else {
       state.phase = "onboarding";
     }
@@ -469,13 +513,18 @@ function confirmOtp(){
 }
 function signOutUser(){
   if(auth) auth.signOut();
+  if(currentChatUnsub){ currentChatUnsub(); currentChatUnsub = null; }
+  USERS = [];
+  usersLoaded = false;
+  unlockedPartners = new Set();
+  currentChatMessages = [];
   state = {
     phase:"splash", tab:"discover", uid:null, loginStep:"phone",
     activeProfileId:null, activeChatId:null, discoverIndex:0, likedIds:[],
     checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
     me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
          status:"", intent:"", matchFactors:{}, lifestyle:{smoke:"",drink:"",party:""},
-         photoData:null, tokenBalance:30, subscription:"none" },
+         photoURL:null, photoPreview:null, tokenBalance:30, subscription:"none" },
   };
   render();
 }
@@ -490,7 +539,7 @@ function renderProfileForm({title, cta, mode}){
 
     <div class="col" style="align-items:center;margin-bottom:24px;">
       <div style="position:relative;cursor:pointer;" onclick="document.getElementById('f-photo').click()">
-        ${avatarHTML(me.name||'?', 'var(--surfaceAlt)', 88, me.photoData, 'var(--muted)')}
+        ${avatarHTML(me.name||'?', 'var(--surfaceAlt)', 88, me.photoURL || me.photoPreview, 'var(--muted)')}
         <div style="position:absolute;bottom:-2px;right:-2px;background:var(--teal);border-radius:999px;padding:6px;display:flex;">
           ${ICONS.camera(14,'#0A1F1C')}
         </div>
@@ -565,26 +614,29 @@ function renderProfileForm({title, cta, mode}){
 function handlePhoto(e){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    state.me = {...state.me, ...readProfileForm(), photoData: reader.result};
-    render();
-  };
-  reader.readAsDataURL(file);
+  // Instant local preview (cheap, no base64 stored anywhere) while the real upload finishes.
+  state.me = {...state.me, ...readProfileForm(), photoPreview: URL.createObjectURL(file)};
+  render();
 
   if(state.uid && storage){
     storage.ref(`profile_photos/${state.uid}/profile.jpg`).put(file)
       .then(snap => snap.ref.getDownloadURL())
       .then(url => {
         state.me.photoURL = url;
+        state.me.photoPreview = null;
         if(db) db.collection('users').doc(state.uid).set({ photoURL: url }, { merge: true });
+        render();
       })
       .catch(err => console.error("Photo upload failed:", err));
+  } else {
+    // No Firebase configured — keep the local preview as the only copy (demo mode).
+    state.me.photoURL = state.me.photoPreview;
   }
 }
 function saveUserToFirestore(){
   if(state.uid && db){
-    db.collection('users').doc(state.uid).set({ ...state.me, uid: state.uid }, { merge: true })
+    const { photoPreview, ...persistable } = state.me;
+    db.collection('users').doc(state.uid).set({ ...persistable, uid: state.uid }, { merge: true })
       .catch(err => console.error("Failed to save profile:", err));
   }
 }
@@ -596,6 +648,8 @@ function finishOnboarding(){
   state.phase = "app"; state.tab = "discover";
   render();
   saveUserToFirestore();
+  loadUsers();
+  loadUnlockedPartners();
 }
 function saveProfile(){
   const { valid, missing, data } = validateProfileForm();
@@ -613,6 +667,13 @@ function discoverQueue(){
   return [...USERS].sort((a,b)=>matchScore(state.me,b)-matchScore(state.me,a));
 }
 function renderDiscover(){
+  if(!usersLoaded){
+    loadUsers().then(()=>{ if(state.tab==='discover') render(); });
+    return `<div class="screen with-nav">
+      <div class="row between" style="margin-bottom:8px;"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
+      <div class="swipe-empty"><p class="muted" style="font-size:14px;">Loading profiles…</p></div>
+    </div>`;
+  }
   const queue = discoverQueue();
   const u = queue[state.discoverIndex];
   if(!u){
@@ -628,8 +689,8 @@ function renderDiscover(){
     <div class="row between" style="margin-bottom:14px;"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
     <div class="swipe-area">
       <div class="swipe-card" id="swipe-card" onpointerdown="cardDragStart(event)"
-           style="background:linear-gradient(165deg, ${u.color}, var(--bg) 130%);">
-        <div class="swipe-initial">${u.name[0]}</div>
+           style="background:${u.photoURL ? `url(${u.photoURL}) center/cover` : `linear-gradient(165deg, ${colorFor(u.id)}, var(--bg) 130%)`};">
+        ${!u.photoURL ? `<div class="swipe-initial">${u.name[0]}</div>` : ''}
         <div class="swipe-gradient"></div>
         <div class="glass-pill" style="top:14px;right:14px;">${score}% match</div>
         <div class="glass-pill" style="top:14px;left:14px;background:rgba(255,255,255,.15);">${u.intent}</div>
@@ -643,7 +704,7 @@ function renderDiscover(){
     </div>
     <div class="swipe-actions">
       <button class="glass-btn" style="color:var(--danger);" onclick="swipeSkip()">${ICONS.x(22)}</button>
-      <button class="glass-btn small" style="color:var(--muted);" onclick="openProfile(${u.id})">${ICONS.info(18)}</button>
+      <button class="glass-btn small" style="color:var(--muted);" onclick="openProfile('${u.id}')">${ICONS.info(18)}</button>
       <button class="glass-btn" style="color:var(--gold);" onclick="swipeLike()">${ICONS.heart(22)}</button>
       <button class="glass-btn" style="color:var(--teal);" onclick="swipeUnlock()">${ICONS.lock(22)}</button>
     </div>
@@ -690,11 +751,61 @@ function swipeSkip(){
 function swipeLike(){
   const queue = discoverQueue();
   const u = queue[state.discoverIndex];
-  if(u) state.likedIds.push(u.id);
   swipeAnimateOut('like', () => {
     state.discoverIndex++;
     render();
-    showToast('💛 Interest sent to ' + (u ? u.name : ''));
+    if(u) showToast('💛 Interest sent to ' + u.name);
+  });
+  if(u) registerLike(u);
+}
+function registerLike(u){
+  if(state.likedIds.includes(u.id)) return;
+  state.likedIds.push(u.id);
+  if(!db || !state.uid) return;
+  const myUid = state.uid;
+  db.collection('likes').doc(`${myUid}_${u.id}`).set({
+    fromUid: myUid, toUid: u.id, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  }).then(() => db.collection('likes').doc(`${u.id}_${myUid}`).get())
+    .then(reverseDoc => {
+      if(reverseDoc.exists){
+        const cid = chatIdFor(myUid, u.id);
+        return db.collection('chats').doc(cid).set({
+          participants: [myUid, u.id], unlocked: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }).then(() => {
+          unlockedPartners.add(u.id);
+          showToast(`🎉 It's a match with ${u.name}!`);
+        });
+      }
+    })
+    .catch(err => console.error('Like failed:', err));
+}
+function unlockChatWith(u){
+  if(!db || !state.uid){
+    state.me.tokenBalance -= 30;
+    unlockedPartners.add(u.id);
+    return Promise.resolve(true);
+  }
+  const myUid = state.uid;
+  const userRef = db.collection('users').doc(myUid);
+  const cid = chatIdFor(myUid, u.id);
+  const chatRef = db.collection('chats').doc(cid);
+  return db.runTransaction(t => Promise.all([t.get(userRef), t.get(chatRef)]).then(([userSnap, chatSnap]) => {
+    const balance = (userSnap.data() && userSnap.data().tokenBalance) || 0;
+    if(balance < 30) throw new Error('insufficient-tokens');
+    t.update(userRef, { tokenBalance: balance - 30 });
+    t.set(chatRef, {
+      participants: [myUid, u.id], unlocked: true,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  })).then(() => {
+    state.me.tokenBalance -= 30;
+    unlockedPartners.add(u.id);
+    return true;
+  }).catch(err => {
+    console.error('Unlock failed:', err);
+    showToast('Unlock failed — please try again');
+    return false;
   });
 }
 function swipeUnlock(){
@@ -702,17 +813,20 @@ function swipeUnlock(){
   const u = queue[state.discoverIndex];
   if(!u) return;
   if(state.me.tokenBalance < 30){ openProfile(u.id); return; }
-  state.me.tokenBalance -= 30;
-  u.unlocked = true;
-  state.discoverIndex++;
-  state.activeChatId = u.id;
-  render();
+  unlockChatWith(u).then(success => {
+    if(success){
+      state.discoverIndex++;
+      state.activeChatId = u.id; subscribeToChat(u.id);
+      render();
+    }
+  });
 }
 function openProfile(id){ state.activeProfileId = id; render(); }
 function closeProfile(){ state.activeProfileId = null; render(); }
 
 function renderProfileSheet(id){
   const u = USERS.find(x=>x.id===id);
+  const isUnlocked = unlockedPartners.has(id);
   const canUnlock = state.me.tokenBalance >= 30;
   const score = matchScore(state.me, u);
   return `<div class="modal-backdrop" onclick="if(event.target===this) closeProfile()">
@@ -722,7 +836,7 @@ function renderProfileSheet(id){
         <button onclick="closeProfile()" style="background:none;border:none;cursor:pointer;">${ICONS.x(20,'var(--muted)')}</button>
       </div>
       <div class="col" style="align-items:center;margin-bottom:16px;">
-        ${avatarHTML(u.name,u.color,84)}
+        ${avatarHTML(u.name, colorFor(u.id), 84, u.photoURL)}
         <div class="serif" style="font-size:20px;margin-top:12px;">${u.name}, ${u.age}</div>
         <div class="row gap2 muted" style="font-size:13px;">${ICONS.mappin(13)} ${u.island}, ${u.atoll}</div>
         <div class="row gap2" style="margin-top:10px;">
@@ -751,23 +865,25 @@ function renderProfileSheet(id){
           </div>
         `).join('')}
       </div>
-      ${u.unlocked
-        ? `<button class="btn" onclick="messageUser(${u.id})">Message ${u.name}</button>`
+      ${isUnlocked
+        ? `<button class="btn" onclick="messageUser('${u.id}')">Message ${u.name}</button>`
         : canUnlock
-          ? `<button class="btn" onclick="unlockChat(${u.id})">Unlock chat · 30 tokens</button>`
+          ? `<button class="btn" onclick="unlockChat('${u.id}')">Unlock chat · 30 tokens</button>`
           : `<div class="row gap2" style="color:var(--danger);font-size:13px;margin-bottom:10px;">${ICONS.alert(14)} Not enough tokens</div>
              <button class="btn btn-ghost" onclick="goTopUp()">Top up wallet</button>`}
     </div>
   </div>`;
 }
 function unlockChat(id){
-  if(state.me.tokenBalance < 30) return;
-  state.me.tokenBalance -= 30;
   const u = USERS.find(x=>x.id===id);
-  u.unlocked = true;
-  state.activeProfileId = null;
-  state.activeChatId = id;
-  render();
+  if(!u || state.me.tokenBalance < 30) return;
+  unlockChatWith(u).then(success => {
+    if(success){
+      state.activeProfileId = null;
+      state.activeChatId = id; subscribeToChat(id);
+      render();
+    }
+  });
 }
 function goTopUp(){
   state.activeProfileId = null;
@@ -777,20 +893,24 @@ function goTopUp(){
 }
 function messageUser(id){
   state.activeProfileId = null;
-  state.activeChatId = id;
+  state.activeChatId = id; subscribeToChat(id);
   render();
 }
 
 /* ---------------------------------------------------------------- chats tab */
 function renderChats(){
-  const unlocked = USERS.filter(u=>u.unlocked);
+  if(!usersLoaded){
+    loadUsers().then(()=>{ if(state.tab==='chats') render(); });
+    return `<div class="screen with-nav"><div class="row between"><h1 class="title">Chats</h1>${logoSVG(28)}</div><p class="muted" style="font-size:14px;margin-top:16px;">Loading…</p></div>`;
+  }
+  const unlocked = USERS.filter(u=>unlockedPartners.has(u.id));
   return `<div class="screen with-nav">
     <div class="row between"><h1 class="title">Chats</h1>${logoSVG(28)}</div>
     ${unlocked.length===0 ? `<p class="muted" style="font-size:14px;margin-top:16px;">Unlock a chat from Discover to start talking.</p>` : ''}
     <div class="col gap2" style="margin-top:16px;">
       ${unlocked.map(u=>`
-        <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openChat(${u.id})">
-          ${avatarHTML(u.name,u.color,44)}
+        <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openChat('${u.id}')">
+          ${avatarHTML(u.name, colorFor(u.id), 44, u.photoURL)}
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${u.name}</div>
             <div class="muted" style="font-size:12px;">Tap to continue the conversation</div>
@@ -800,29 +920,51 @@ function renderChats(){
     </div>
   </div>`;
 }
-function openChat(id){ state.activeChatId = id; render(); }
-function closeChat(){ state.activeChatId = null; render(); }
+function openChat(id){ state.activeChatId = id; subscribeToChat(id); render(); }
+function closeChat(){
+  if(currentChatUnsub){ currentChatUnsub(); currentChatUnsub = null; }
+  state.activeChatId = null;
+  render();
+}
 
-/* ---------------------------------------------------------------- chat thread */
-let chatAgree = {}; // { [userId]: {me:bool, them:bool} }
+/* ---------------------------------------------------------------- chat thread (real-time) */
+let chatAgree = {}; // local UI-only state for the WhatsApp mutual-agree step
+let currentChatMessages = [];
+let currentChatUnsub = null;
+function subscribeToChat(partnerId){
+  if(currentChatUnsub){ currentChatUnsub(); currentChatUnsub = null; }
+  currentChatMessages = [];
+  if(!db || !state.uid) return;
+  const cid = chatIdFor(state.uid, partnerId);
+  currentChatUnsub = db.collection('chats').doc(cid).collection('messages').orderBy('timestamp','asc')
+    .onSnapshot(snap => {
+      currentChatMessages = snap.docs.map(d=>d.data());
+      const msgsEl = document.getElementById('chat-messages');
+      if(msgsEl && state.activeChatId===partnerId){
+        msgsEl.innerHTML = currentChatMessages.map(m=>`<div class="bubble ${m.fromUid===state.uid?'me':'them'}">${m.text}</div>`).join('');
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      }
+    }, err => console.error('Chat listener failed:', err));
+}
 function renderChatThread(id){
   const u = USERS.find(x=>x.id===id);
+  if(!u) return `<div class="chat-screen"></div>`;
   chatAgree[id] = chatAgree[id] || {me:false, them:false};
   const a = chatAgree[id];
   return `<div class="chat-screen">
     <div class="row gap3" style="padding:20px 16px 12px;">
       <button onclick="closeChat()" style="background:none;border:none;cursor:pointer;">${ICONS.chevron(20,'var(--muted)')}</button>
-      ${avatarHTML(u.name,u.color,36)}
+      ${avatarHTML(u.name, colorFor(u.id), 36, u.photoURL)}
       <span style="font-weight:600;">${u.name}</span>
     </div>
     <div class="chat-messages" id="chat-messages">
-      ${u.messages.map(m=>`<div class="bubble ${m.from==='me'?'me':'them'}">${m.text}</div>`).join('')}
+      ${currentChatMessages.map(m=>`<div class="bubble ${m.fromUid===state.uid?'me':'them'}">${m.text}</div>`).join('')}
     </div>
     <div class="card" style="margin:0 16px 12px;">
       <div class="label">Share contact on WhatsApp</div>
       <p class="muted" style="font-size:12px;margin:0 0 12px;">Both of you need to agree before numbers are shared.</p>
       <div class="col gap2" style="margin-bottom:10px;">
-        <button class="row between" style="width:100%;padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);border:none;cursor:pointer;color:var(--text);" onclick="toggleMeAgree(${u.id})">
+        <button class="row between" style="width:100%;padding:8px 12px;border-radius:12px;background:var(--surfaceAlt);border:none;cursor:pointer;color:var(--text);" onclick="toggleMeAgree('${u.id}')">
           <span>You</span>
           ${a.me ? ICONS.check(16,'var(--teal)') : `<span class="muted" style="font-size:12px;">Tap to agree</span>`}
         </button>
@@ -831,12 +973,12 @@ function renderChatThread(id){
           ${a.them ? ICONS.check(16,'var(--teal)') : `<span class="muted" style="font-size:12px;">Waiting…</span>`}
         </div>
       </div>
-      ${!a.them ? `<button onclick="simulateThemAgree(${u.id})" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;">(Demo only — simulate ${u.name} agreeing)</button>` : ''}
+      ${!a.them ? `<button onclick="simulateThemAgree('${u.id}')" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;">(Demo only — simulate ${u.name} agreeing)</button>` : ''}
       ${a.me && a.them ? `<a class="btn-link row gap2 center" href="https://wa.me/9601234567" style="margin-top:12px;background:var(--teal);color:#0A1F1C;padding:12px;border-radius:12px;font-weight:600;font-size:14px;">${ICONS.phone(15,'#0A1F1C')} Open WhatsApp</a>` : ''}
     </div>
     <div class="chat-input-row">
-      <input class="field" style="margin:0;" id="chat-draft" placeholder="Message" onkeydown="if(event.key==='Enter') sendMessage(${u.id})">
-      <button class="icon-btn" onclick="sendMessage(${u.id})">${ICONS.send(18,'#1A1208')}</button>
+      <input class="field" style="margin:0;" id="chat-draft" placeholder="Message" onkeydown="if(event.key==='Enter') sendMessage('${u.id}')">
+      <button class="icon-btn" onclick="sendMessage('${u.id}')">${ICONS.send(18,'#1A1208')}</button>
     </div>
   </div>`;
 }
@@ -852,16 +994,30 @@ function sendMessage(id){
   const input = document.getElementById('chat-draft');
   const text = input.value.trim();
   if(!text) return;
-  const u = USERS.find(x=>x.id===id);
-  u.messages.push({from:"me", text});
-  const msgs = document.getElementById('chat-messages');
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble me';
-  bubble.textContent = text;
-  msgs.appendChild(bubble);
-  msgs.scrollTop = msgs.scrollHeight;
   input.value = '';
   input.focus();
+  if(db && state.uid){
+    const cid = chatIdFor(state.uid, id);
+    const chatRef = db.collection('chats').doc(cid);
+    const msgRef = chatRef.collection('messages').doc();
+    const batch = db.batch();
+    batch.set(msgRef, { fromUid: state.uid, text, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(chatRef, {
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(), lastMessageText: text,
+    }, { merge: true });
+    batch.commit().catch(err => console.error('Send failed:', err));
+    // The onSnapshot listener above renders the new bubble once Firestore confirms the write.
+  } else {
+    currentChatMessages.push({ fromUid: state.uid || 'me', text });
+    const msgs = document.getElementById('chat-messages');
+    if(msgs){
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble me';
+      bubble.textContent = text;
+      msgs.appendChild(bubble);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  }
 }
 
 /* ---------------------------------------------------------------- wallet */
@@ -972,6 +1128,19 @@ function co_submit(){
   }
   state.checkout.step = "submitted";
   render();
+  if(db && state.uid){
+    const plan = state.checkout.plan;
+    db.collection('transactions').add({
+      uid: state.uid,
+      type: plan.tokens ? "topup" : "subscription",
+      mvr: plan.mvr,
+      tokens: plan.tokens || null,
+      referenceCode: state.checkout.ref,
+      bankTransactionId: tx.trim() || null,
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(err => console.error("Failed to record transaction:", err));
+  }
 }
 
 /* ---------------------------------------------------------------- bottom nav */
