@@ -67,6 +67,18 @@
   .icon-btn{background:var(--gold);border:none;border-radius:10px;width:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
   a.btn-link{text-decoration:none;}
   .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:var(--teal);color:#0A1F1C;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;z-index:30;}
+  .swipe-area{position:relative;height:440px;margin-bottom:8px;}
+  .swipe-card{position:absolute;inset:0;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);touch-action:none;cursor:grab;}
+  .swipe-card.dragging{cursor:grabbing;}
+  .swipe-gradient{position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.8), transparent 55%);}
+  .swipe-initial{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:130px;font-weight:600;color:rgba(255,255,255,.16);font-family:'Fraunces',serif;}
+  .glass-pill{position:absolute;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);color:#fff;}
+  .swipe-stamp{position:absolute;top:50%;padding:8px 16px;border-radius:12px;font-weight:700;font-size:18px;transform:translateY(-50%);}
+  .swipe-footer{position:absolute;left:0;right:0;bottom:0;padding:20px;color:#fff;}
+  .swipe-actions{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:20px;}
+  .glass-btn{width:58px;height:58px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 24px rgba(0,0,0,.35);cursor:pointer;}
+  .glass-btn.small{width:46px;height:46px;}
+  .swipe-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:440px;text-align:center;}
 </style>
 </head>
 <body>
@@ -93,6 +105,7 @@ const ICONS = {
   briefcase:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
   phone:(s=15,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 2a12 12 0 0 0 5.5 5.5l2-2.5 5 2v4a2 2 0 0 1-2 2C9.5 22 2 14.5 2 6a2 2 0 0 1 2-2Z"/></svg>`,
   camera:(s=14,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+  info:(s=18,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.5" fill="${c}"/></svg>`,
 };
 function logoSVG(size=40){
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none">
@@ -107,31 +120,67 @@ function wordmark(size=22){
 }
 
 /* ---------------------------------------------------------------- data */
-const ATOLLS = [
-  "Haa Alifu","Haa Dhaalu","Shaviyani","Noonu","Raa","Baa","Lhaviyani","Kaafu",
-  "Alif Alif","Alif Dhaalu","Vaavu","Meemu","Faafu","Dhaalu","Thaa","Laamu",
-  "Gaafu Alif","Gaafu Dhaalu","Gnaviyani","Seenu",
-];
+const ATOLLS_DATA = {
+  "Haa Alifu": ["Dhidhdhoo","Filladhoo","Hoarafushi","Ihavandhoo","Kelaa","Maarandhoo","Muraidhoo","Thakandhoo","Utheemu","Baarah","Molhadhoo"],
+  "Haa Dhaalu": ["Kulhudhuffushi","Hanimaadhoo","Nolhivaranfaru","Nolhivaram","Finey","Naivaadhoo","Nellaidhoo","Neykurendhoo","Vaikaradhoo","Makunudhoo"],
+  "Shaviyani": ["Funadhoo","Milandhoo","Komandoo","Lhaimagu","Foakaidhoo","Feevah","Goidhoo","Maroshi","Narudhoo"],
+  "Noonu": ["Manadhoo","Velidhoo","Holhudhoo","Foddhoo","Miladhoo","Magoodhoo","Landhoo","Maalhendhoo"],
+  "Raa": ["Ungoofaaru","Hulhudhuffaaru","Meedhoo","Alifushi","Dhuvaafaru","Kinolhas","Rasmaadhoo","Innamaadhoo","Maakurathu","Maduvvari","Vaadhoo"],
+  "Baa": ["Eydhafushi","Dharavandhoo","Thulhaadhoo","Kamadhoo","Kudarikilu","Kihaadhoo","Maalhos","Dhonfanu","Hithaadhoo","Fehendhoo","Goidhoo"],
+  "Lhaviyani": ["Naifaru","Hinnavaru","Kurendhoo","Olhuvelifushi","Felivaru"],
+  "Kaafu": ["Malé","Hulhumalé","Villimalé","Maafushi","Guraidhoo","Thulusdhoo","Himmafushi","Huraa","Dhiffushi","Kaashidhoo","Gulhi"],
+  "Alif Alif": ["Rasdhoo","Ukulhas","Mathiveri","Thoddoo","Feridhoo","Bodufolhudhoo","Himandhoo","Maalhos"],
+  "Alif Dhaalu": ["Mahibadhoo","Dhangethi","Dhigurah","Omadhoo","Maamigili","Kunburudhoo","Fenfushi","Mandhoo","Hangnaameedhoo"],
+  "Vaavu": ["Felidhoo","Fulidhoo","Keyodhoo","Thinadhoo","Rakeedhoo"],
+  "Meemu": ["Muli","Naalaafushi","Kolhufushi","Madifushi","Mulah","Veyvah","Maduvvari"],
+  "Faafu": ["Nilandhoo","Bileddhoo","Dharanboodhoo","Feeali","Magoodhoo"],
+  "Dhaalu": ["Kudahuvadhoo","Meedhoo","Rinbudhoo","Bandidhoo","Hulhudheli","Vaanee","Gemendhoo"],
+  "Thaa": ["Veymandoo","Kinbidhoo","Omadhoo","Vilufushi","Thimarafushi","Madifushi","Buruni","Kandoodhoo","Gaadhiffushi"],
+  "Laamu": ["Fonadhoo","Gan","Maabaidhoo","Isdhoo","Kalaidhoo","Maamendhoo","Maavah"],
+  "Gaafu Alif": ["Vilingili","Kondey","Dhaandhoo","Maamendhoo","Meradhoo","Kolamaafushi","Dhevvadhoo","Gemanafushi","Nilandhoo"],
+  "Gaafu Dhaalu": ["Thinadhoo","Gadhdhoo","Madaveli","Hoandedhdhoo","Nadellaa","Rathafandhoo","Vaadhoo","Faresmaathodaa"],
+  "Gnaviyani": ["Fuvahmulah"],
+  "Seenu": ["Hithadhoo","Maradhoo","Maradhoo-Feydhoo","Feydhoo","Hulhudhoo","Meedhoo","Gan"],
+};
+const ATOLLS = Object.keys(ATOLLS_DATA);
 const PALETTE = ['var(--gold)','var(--teal)','#C75C4D','#8FA39E'];
 let USERS = [
   { id:1, name:"Aishath", age:26, gender:"Woman", atoll:"Kaafu", island:"Malé", work:"Teacher", status:"Single", intent:"Serious",
     bio:"Quiet evenings, good food, and someone who follows through on plans.",
-    religious:"Yes", wearBurqa:"Yes",
+    matchFactors:{religion:3, mobility:1, family:3, timeline:3, socialRhythm:1, privacy:2},
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[0], messages:[] },
   { id:2, name:"Ibrahim", age:29, gender:"Man", atoll:"Kaafu", island:"Hulhumalé", work:"Marine Engineer", status:"Single", intent:"Dating",
     bio:"Out on the water most weekends. Looking for someone to drag along.",
-    religious:"No", wearBurqa:"",
+    matchFactors:{religion:1, mobility:4, family:1, timeline:1, socialRhythm:3, privacy:3},
     lifestyle:{smoke:"No",drink:"Prefer not to say",party:"No"}, unlocked:true, color:PALETTE[1],
     messages:[{from:"them",text:"Hey! Saw you're into diving too 🤿"},{from:"me",text:"Yes! Are you based in Malé?"},{from:"them",text:"Hulhumalé side, but happy to meet halfway"}] },
-  { id:3, name:"Fathimath", age:24, gender:"Woman", atoll:"Seenu", island:"Addu City", work:"Nurse", status:"Divorced", intent:"Casual",
+  { id:3, name:"Fathimath", age:24, gender:"Woman", atoll:"Seenu", island:"Hithadhoo", work:"Nurse", status:"Divorced", intent:"Casual",
     bio:"Just moved back from Malé. Taking things slow and easy.",
-    religious:"No", wearBurqa:"No",
+    matchFactors:{religion:2, mobility:2, family:2, timeline:1, socialRhythm:2, privacy:2},
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[2], messages:[] },
   { id:4, name:"Hassan", age:31, gender:"Man", atoll:"Kaafu", island:"Malé", work:"Business owner", status:"Single", intent:"Marriage-minded",
     bio:"Ready to settle down. Family means everything to me.",
-    religious:"Yes", wearBurqa:"",
+    matchFactors:{religion:4, mobility:1, family:4, timeline:4, socialRhythm:1, privacy:1},
     lifestyle:{smoke:"No",drink:"No",party:"No"}, unlocked:false, color:PALETTE[3], messages:[] },
 ];
+const MATCH_FACTORS = [
+  {key:"religion", label:"Religion & practice level", levels:["Not practicing","Culturally religious","Practicing","Highly devout"]},
+  {key:"mobility", label:"Island mobility", levels:["Stays on home island","Open to nearby islands","Open to other atolls","Open to relocating"]},
+  {key:"family", label:"Family involvement", levels:["Independent","Family informed","Family input matters","Family approval required"]},
+  {key:"timeline", label:"Relationship timeline", levels:["No rush","Getting to know, no timeline","Looking to settle soon","Ready to marry"]},
+  {key:"socialRhythm", label:"Social lifestyle rhythm", levels:["Homebody","Balanced","Social","Very social"]},
+  {key:"privacy", label:"Privacy / visibility", levels:["Very private","Mostly private","Open with close circle","Open / public"]},
+];
+function matchScore(me, u){
+  if(!me.matchFactors || !u.matchFactors) return 50;
+  let total = 0;
+  MATCH_FACTORS.forEach(f=>{
+    const a = me.matchFactors[f.key] || 1;
+    const b = u.matchFactors[f.key] || 1;
+    total += 1 - Math.abs(a-b)/3;
+  });
+  return Math.round((total/MATCH_FACTORS.length)*100);
+}
 const LIFESTYLE_FIELDS = [
   {key:"smoke", label:"Smokes"},
   {key:"drink", label:"Drinks alcohol"},
@@ -140,7 +189,6 @@ const LIFESTYLE_FIELDS = [
 const INTENT_OPTIONS = ["Casual","Dating","Serious","Marriage-minded"];
 const STATUS_OPTIONS = ["Single","Divorced","Widowed","Separated"];
 const ANSWER_OPTIONS = ["Yes","No","Prefer not to say"];
-const BOOL_OPTIONS = ["Yes","No"];
 const TOKEN_PACKS = [
   {id:"t50", label:"Starter", mvr:50, tokens:100},
   {id:"t100", label:"Basic", mvr:100, tokens:200},
@@ -151,7 +199,7 @@ const SUB_TIERS = [
   {id:"s300", label:"Unlimited", mvr:300, period:true, desc:"Unlimited chat unlocks"},
   {id:"s500", label:"Unlimited+", mvr:500, period:true, desc:"+ super-likes, who-liked-you, 2 boosts/mo"},
 ];
-const BANK = {bankName:"Maldives Islamic Bank (MIB)", accountName:"[Name]", accountNumber:"000000000000000"};
+const BANK = {bankName:"Bank of Maldives (BML)", accountName:"[Your Business Name]", accountNumber:"0000 0000 0000"};
 function genRef(){
   return "MV-" + Date.now().toString(36).toUpperCase().slice(-4) + Math.random().toString(36).toUpperCase().slice(2,5);
 }
@@ -159,10 +207,10 @@ function genRef(){
 /* ---------------------------------------------------------------- state */
 let state = {
   phase:"splash", tab:"discover",
-  activeProfileId:null, activeChatId:null,
+  activeProfileId:null, activeChatId:null, discoverIndex:0, likedIds:[],
   checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
   me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
-       status:"", intent:"", religious:"", wearBurqa:"", lifestyle:{smoke:"",drink:"",party:""},
+       status:"", intent:"", matchFactors:{}, lifestyle:{smoke:"",drink:"",party:""},
        photoData:null, tokenBalance:30, subscription:"none" },
 };
 
@@ -178,24 +226,34 @@ function pillGroup(group, options, value){
     ${options.map(o=>`<button type="button" class="pill ${o===value?'active':''}" onclick="selectPill(this,'${o}')">${o}</button>`).join('')}
   </div>`;
 }
+function onAtollChange(selectEl){
+  const atoll = selectEl.value;
+  const islandSelect = document.getElementById('f-island');
+  const islands = ATOLLS_DATA[atoll] || [];
+  islandSelect.innerHTML = `<option value="" selected disabled hidden>Island</option>` + islands.map(i=>`<option value="${i}">${i}</option>`).join('');
+  islandSelect.disabled = islands.length === 0;
+  islandSelect.classList.remove('error');
+  selectEl.classList.remove('error');
+}
 function selectPill(btn, value){
   const group = btn.closest('.pill-group');
   group.dataset.value = value;
   group.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   group.classList.remove('error');
-  if(group.dataset.group==='gender'){
-    const wrap = document.getElementById('burqa-field-wrap');
-    if(wrap) wrap.style.display = (value==='Woman') ? 'block' : 'none';
-  }
 }
 function readProfileForm(){
   const get = id => (document.getElementById(id)||{}).value || "";
   const groupVal = g => { const el=document.querySelector(`.pill-group[data-group="${g}"]`); return el?el.dataset.value:""; };
+  const matchFactors = {};
+  MATCH_FACTORS.forEach(f=>{
+    const val = groupVal('mf-'+f.key);
+    matchFactors[f.key] = val ? f.levels.indexOf(val)+1 : 0;
+  });
   return {
     name:get('f-name'), age:get('f-age'), atoll:get('f-atoll'), island:get('f-island'), work:get('f-work'), bio:get('f-bio'),
     gender:groupVal('gender'), lookingFor:groupVal('lookingFor'), status:groupVal('status'), intent:groupVal('intent'),
-    religious:groupVal('religious'), wearBurqa:groupVal('wearBurqa'),
+    matchFactors,
     lifestyle:{ smoke:groupVal('lifestyle-smoke'), drink:groupVal('lifestyle-drink'), party:groupVal('lifestyle-party') },
   };
 }
@@ -210,8 +268,7 @@ function validateProfileForm(){
   if(!d.lookingFor) missing.push({group:'lookingFor', label:'Looking for'});
   if(!d.status) missing.push({group:'status', label:'Relationship status'});
   if(!d.intent) missing.push({group:'intent', label:'Looking to find'});
-  if(!d.religious) missing.push({group:'religious', label:'Religious'});
-  if(d.gender==='Woman' && !d.wearBurqa) missing.push({group:'wearBurqa', label:'Wears burqa'});
+  MATCH_FACTORS.forEach(f=>{ if(!d.matchFactors[f.key]) missing.push({group:'mf-'+f.key, label:f.label}); });
   if(!d.work.trim()) missing.push({id:'f-work', label:'Work'});
   if(!d.bio.trim()) missing.push({id:'f-bio', label:'Bio'});
   if(!d.lifestyle.smoke) missing.push({group:'lifestyle-smoke', label:'Smokes'});
@@ -312,13 +369,16 @@ function renderProfileForm({title, cta, mode}){
     <div class="label">Location</div>
     <div class="row gap3">
       <div style="flex:1;">
-        <select id="f-atoll" class="field">
+        <select id="f-atoll" class="field" onchange="onAtollChange(this)">
           <option value="" ${!me.atoll?'selected':''} disabled hidden>Atoll</option>
           ${ATOLLS.map(a=>`<option value="${a}" ${me.atoll===a?'selected':''}>${a}</option>`).join('')}
         </select>
       </div>
       <div style="flex:1;">
-        <input id="f-island" class="field" placeholder="Island" value="${me.island}">
+        <select id="f-island" class="field" ${!me.atoll?'disabled':''}>
+          <option value="" ${!me.island?'selected':''} disabled hidden>Island</option>
+          ${(ATOLLS_DATA[me.atoll]||[]).map(i=>`<option value="${i}" ${me.island===i?'selected':''}>${i}</option>`).join('')}
+        </select>
       </div>
     </div>
 
@@ -334,13 +394,13 @@ function renderProfileForm({title, cta, mode}){
     <div class="label">Looking to find</div>
     ${pillGroup('intent', INTENT_OPTIONS, me.intent)}
 
-    <div class="label">Religious</div>
-    ${pillGroup('religious', BOOL_OPTIONS, me.religious)}
-
-    <div id="burqa-field-wrap" style="display:${me.gender==='Woman' ? 'block' : 'none'};">
-      <div class="label">Wears burqa</div>
-      ${pillGroup('wearBurqa', BOOL_OPTIONS, me.wearBurqa)}
-    </div>
+    <div class="label">Compatibility signals</div>
+    ${MATCH_FACTORS.map(f=>`
+      <div style="margin-bottom:6px;">
+        <div style="font-size:13px;color:var(--text);margin-bottom:6px;">${f.label}</div>
+        ${pillGroup('mf-'+f.key, f.levels, f.levels[(me.matchFactors && me.matchFactors[f.key] || 0) - 1] || '')}
+      </div>
+    `).join('')}
 
     <div class="label">Work</div>
     <input id="f-work" class="field" value="${me.work}">
@@ -390,47 +450,105 @@ function saveProfile(){
 }
 
 /* ---------------------------------------------------------------- matching */
-function isCompatible(me, u){
-  if(u.lifestyle.smoke !== me.lifestyle.smoke) return false;
-  if(u.lifestyle.drink !== me.lifestyle.drink) return false;
-  if(u.lifestyle.party !== me.lifestyle.party) return false;
-
-  const meReligiousMan = me.gender==="Man" && me.religious==="Yes";
-  const meBurqaWoman = me.gender==="Woman" && me.wearBurqa==="Yes";
-  const uReligiousMan = u.gender==="Man" && u.religious==="Yes";
-  const uBurqaWoman = u.gender==="Woman" && u.wearBurqa==="Yes";
-
-  if(meReligiousMan && !uBurqaWoman) return false;
-  if(meBurqaWoman && !uReligiousMan) return false;
-  if(uReligiousMan && !meBurqaWoman) return false;
-  if(uBurqaWoman && !meReligiousMan) return false;
-
-  return true;
+/* ---------------------------------------------------------------- discover (swipe deck) */
+function discoverQueue(){
+  return [...USERS].sort((a,b)=>matchScore(state.me,b)-matchScore(state.me,a));
 }
-
-/* ---------------------------------------------------------------- discover */
 function renderDiscover(){
-  const visible = USERS.filter(u=>isCompatible(state.me,u));
+  const queue = discoverQueue();
+  const u = queue[state.discoverIndex];
+  if(!u){
+    return `<div class="screen with-nav">
+      <div class="row between" style="margin-bottom:8px;"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
+      <div class="swipe-empty">
+        <p class="muted" style="font-size:14px;">You've seen everyone for now. Check back soon.</p>
+      </div>
+    </div>`;
+  }
+  const score = matchScore(state.me, u);
   return `<div class="screen with-nav">
-    <div class="row between"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
-    <div class="muted" style="font-size:12px;margin:4px 0 16px;">${state.me.tokenBalance} tokens available</div>
-    ${visible.length===0 ? `<p class="muted" style="font-size:14px;margin-top:24px;text-align:center;">No matches yet based on your preferences. Check back soon.</p>` : `
-    <div class="col gap3">
-      ${visible.map(u=>`
-        <button class="card row gap3" style="width:100%;text-align:left;cursor:pointer;" onclick="openProfile(${u.id})">
-          ${avatarHTML(u.name,u.color,52)}
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;">${u.name}, ${u.age}</div>
-            <div class="row gap2 muted" style="font-size:12px;">${ICONS.mappin(12)} ${u.island}, ${u.atoll} · ${u.work}</div>
-            <div style="margin-top:6px;"><span class="tagpill tag-teal">${u.intent}</span></div>
-          </div>
-          ${u.unlocked
-            ? `<span class="tagpill tag-teal">${ICONS.check(11)} Chat open</span>`
-            : `<span class="tagpill tag-muted">${ICONS.lock(11)} Locked</span>`}
-        </button>
-      `).join('')}
-    </div>`}
+    <div class="row between" style="margin-bottom:14px;"><h1 class="title">Discover</h1>${logoSVG(28)}</div>
+    <div class="swipe-area">
+      <div class="swipe-card" id="swipe-card" onpointerdown="cardDragStart(event)"
+           style="background:linear-gradient(165deg, ${u.color}, var(--bg) 130%);">
+        <div class="swipe-initial">${u.name[0]}</div>
+        <div class="swipe-gradient"></div>
+        <div class="glass-pill" style="top:14px;right:14px;">${score}% match</div>
+        <div class="glass-pill" style="top:14px;left:14px;background:rgba(255,255,255,.15);">${u.intent}</div>
+        <div class="swipe-stamp" id="stamp-skip" style="left:24px;border:2px solid var(--danger);color:var(--danger);opacity:0;transform:translateY(-50%) rotate(-12deg);">SKIP</div>
+        <div class="swipe-stamp" id="stamp-like" style="right:24px;border:2px solid var(--gold);color:var(--gold);opacity:0;transform:translateY(-50%) rotate(12deg);">LIKE</div>
+        <div class="swipe-footer">
+          <div class="serif" style="font-size:22px;">${u.name}, ${u.age}</div>
+          <div class="row gap2" style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px;">${ICONS.mappin(13)} ${u.island}, ${u.atoll}</div>
+        </div>
+      </div>
+    </div>
+    <div class="swipe-actions">
+      <button class="glass-btn" style="color:var(--danger);" onclick="swipeSkip()">${ICONS.x(22)}</button>
+      <button class="glass-btn small" style="color:var(--muted);" onclick="openProfile(${u.id})">${ICONS.info(18)}</button>
+      <button class="glass-btn" style="color:var(--gold);" onclick="swipeLike()">${ICONS.heart(22)}</button>
+      <button class="glass-btn" style="color:var(--teal);" onclick="swipeUnlock()">${ICONS.lock(22)}</button>
+    </div>
+    <div class="muted" style="text-align:center;font-size:12px;margin-top:10px;">Unlock chat · 30 tokens</div>
   </div>`;
+}
+let dragStartX = 0, dragging = false;
+function cardDragStart(e){
+  dragging = true;
+  dragStartX = e.clientX;
+  const card = document.getElementById('swipe-card');
+  card.classList.add('dragging');
+  const move = (ev) => {
+    const dx = ev.clientX - dragStartX;
+    card.style.transform = `translateX(${dx}px) rotate(${dx/14}deg)`;
+    const like = document.getElementById('stamp-like');
+    const skip = document.getElementById('stamp-skip');
+    if(like) like.style.opacity = Math.max(0, Math.min(1, dx/90));
+    if(skip) skip.style.opacity = Math.max(0, Math.min(1, -dx/90));
+  };
+  const up = (ev) => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    dragging = false;
+    const dx = ev.clientX - dragStartX;
+    if(dx > 100) swipeLike();
+    else if(dx < -100) swipeSkip();
+    else if(card){ card.classList.remove('dragging'); card.style.transform = ''; }
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+function swipeAnimateOut(direction, cb){
+  const card = document.getElementById('swipe-card');
+  if(card){
+    card.style.transition = 'transform 0.22s ease';
+    card.style.transform = `translateX(${direction==='like'?700:-700}px) rotate(${direction==='like'?20:-20}deg)`;
+  }
+  setTimeout(cb, 180);
+}
+function swipeSkip(){
+  swipeAnimateOut('skip', () => { state.discoverIndex++; render(); });
+}
+function swipeLike(){
+  const queue = discoverQueue();
+  const u = queue[state.discoverIndex];
+  if(u) state.likedIds.push(u.id);
+  swipeAnimateOut('like', () => {
+    state.discoverIndex++;
+    render();
+    showToast('💛 Interest sent to ' + (u ? u.name : ''));
+  });
+}
+function swipeUnlock(){
+  const queue = discoverQueue();
+  const u = queue[state.discoverIndex];
+  if(!u) return;
+  if(state.me.tokenBalance < 30){ openProfile(u.id); return; }
+  state.me.tokenBalance -= 30;
+  u.unlocked = true;
+  state.discoverIndex++;
+  state.activeChatId = u.id;
+  render();
 }
 function openProfile(id){ state.activeProfileId = id; render(); }
 function closeProfile(){ state.activeProfileId = null; render(); }
@@ -438,9 +556,13 @@ function closeProfile(){ state.activeProfileId = null; render(); }
 function renderProfileSheet(id){
   const u = USERS.find(x=>x.id===id);
   const canUnlock = state.me.tokenBalance >= 30;
+  const score = matchScore(state.me, u);
   return `<div class="modal-backdrop" onclick="if(event.target===this) closeProfile()">
     <div class="modal-sheet">
-      <div class="row" style="justify-content:flex-end;"><button onclick="closeProfile()" style="background:none;border:none;cursor:pointer;">${ICONS.x(20,'var(--muted)')}</button></div>
+      <div class="row between" style="margin-bottom:2px;">
+        <span class="tagpill tag-teal">${score}% match</span>
+        <button onclick="closeProfile()" style="background:none;border:none;cursor:pointer;">${ICONS.x(20,'var(--muted)')}</button>
+      </div>
       <div class="col" style="align-items:center;margin-bottom:16px;">
         ${avatarHTML(u.name,u.color,84)}
         <div class="serif" style="font-size:20px;margin-top:12px;">${u.name}, ${u.age}</div>
@@ -454,22 +576,22 @@ function renderProfileSheet(id){
       <p style="font-size:14px;margin:0 0 12px;">${u.bio}</p>
       <div class="row gap2 muted" style="font-size:13px;margin-bottom:20px;">${ICONS.briefcase(14)} ${u.work}</div>
       <div class="label">Lifestyle</div>
-      <div class="col gap2" style="margin-bottom:24px;">
+      <div class="col gap2" style="margin-bottom:20px;">
         ${LIFESTYLE_FIELDS.map(f=>`
           <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
             <span class="muted" style="font-size:13px;">${f.label}</span>
             <span style="font-size:13px;">${u.lifestyle[f.key]}</span>
           </div>
         `).join('')}
-        <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
-          <span class="muted" style="font-size:13px;">Religious</span>
-          <span style="font-size:13px;">${u.religious}</span>
-        </div>
-        ${u.gender==="Woman" ? `
-        <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
-          <span class="muted" style="font-size:13px;">Wears burqa</span>
-          <span style="font-size:13px;">${u.wearBurqa}</span>
-        </div>` : ''}
+      </div>
+      <div class="label">Compatibility signals</div>
+      <div class="col gap2" style="margin-bottom:24px;">
+        ${MATCH_FACTORS.map(f=>`
+          <div class="row between" style="padding:10px 12px;border-radius:12px;background:var(--surface);">
+            <span class="muted" style="font-size:13px;">${f.label}</span>
+            <span style="font-size:13px;text-align:right;max-width:55%;">${f.levels[(u.matchFactors && u.matchFactors[f.key] || 1) - 1]}</span>
+          </div>
+        `).join('')}
       </div>
       ${u.unlocked
         ? `<button class="btn" onclick="messageUser(${u.id})">Message ${u.name}</button>`
@@ -485,6 +607,8 @@ function unlockChat(id){
   state.me.tokenBalance -= 30;
   const u = USERS.find(x=>x.id===id);
   u.unlocked = true;
+  state.activeProfileId = null;
+  state.activeChatId = id;
   render();
 }
 function goTopUp(){
