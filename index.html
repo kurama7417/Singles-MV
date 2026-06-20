@@ -20,6 +20,18 @@
     #frame{align-items:center;padding:40px 0;}
     #app{height:844px;border-radius:36px;box-shadow:0 30px 80px rgba(0,0,0,0.55);border:1px solid var(--line);}
   }
+  #sidebar{display:none;}
+  .sidebar-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;text-align:left;width:100%;}
+  .sidebar-item.active{background:var(--surfaceAlt);color:var(--gold);}
+  @media (min-width:1024px){
+    body{display:flex;}
+    #sidebar{display:flex;flex-direction:column;width:250px;flex-shrink:0;padding:28px 18px;background:var(--surface);border-right:1px solid var(--line);min-height:100vh;}
+    #frame{flex:1;align-items:center;padding:40px;}
+    #app{width:100%;max-width:640px;height:88vh;max-height:780px;}
+    .nav{display:none;}
+    .screen.with-nav{padding-bottom:24px;}
+    .swipe-area{height:560px;}
+  }
   .screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 16px 24px;}
   .screen.with-nav{padding-bottom:96px;}
   .row{display:flex;align-items:center;}
@@ -83,9 +95,36 @@
 </head>
 <body>
 <div id="backdrop"></div>
+<div id="sidebar"></div>
 <div id="frame"><div id="app"></div></div>
 
+<!-- Firebase SDK (compat build, for use with classic script tags and inline onclick handlers used throughout this file) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
+
 <script>
+/* ---------------------------------------------------------------- firebase setup */
+// Replace with your project's config from Firebase Console → Project settings → General → Your apps
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+};
+let auth, db, storage;
+try {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  storage = firebase.storage();
+} catch (e) {
+  console.warn("Firebase not configured yet — running in local demo mode.", e);
+}
+
 /* ---------------------------------------------------------------- icons */
 const ICONS = {
   heart:(s=20,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><path d="M12 20 C6 15 3 11 3 7.5 C3 4.5 5.5 3 8 4.2 C9.5 5 11 6.5 12 8.5 C13 6.5 14.5 5 16 4.2 C18.5 3 21 4.5 21 7.5 C21 11 18 15 12 20 Z"/></svg>`,
@@ -206,7 +245,7 @@ function genRef(){
 
 /* ---------------------------------------------------------------- state */
 let state = {
-  phase:"splash", tab:"discover",
+  phase:"splash", tab:"discover", uid:null, loginStep:"phone",
   activeProfileId:null, activeChatId:null, discoverIndex:0, likedIds:[],
   checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
   me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
@@ -313,7 +352,10 @@ function copyField(value, btn){
 /* ---------------------------------------------------------------- render dispatch */
 function render(){
   const app = document.getElementById('app');
+  const sidebar = document.getElementById('sidebar');
+  if(sidebar) sidebar.innerHTML = renderSidebar();
   if(state.phase==="splash"){ app.innerHTML = renderSplash(); return; }
+  if(state.phase==="login"){ app.innerHTML = renderLogin(); return; }
   if(state.phase==="onboarding"){ app.innerHTML = renderProfileForm({title:"Tell us about yourself", cta:"Start exploring", mode:"onboarding"}); return; }
   if(state.activeChatId){ app.innerHTML = renderChatThread(state.activeChatId); return; }
 
@@ -335,12 +377,109 @@ function renderSplash(){
     <p class="muted" style="margin:8px 0 0;font-size:14px;">Made for the Maldives</p>
     <div class="tagpill tag-gold" style="margin-top:16px;">Sign up free — get 30 tokens, enough to unlock your first chat</div>
     <div style="width:100%;max-width:260px;margin-top:32px;">
-      <button class="btn" onclick="state.phase='onboarding';render()">Get started</button>
+      <button class="btn" onclick="state.phase='login';render()">Get started</button>
     </div>
   </div>`;
 }
 
 /* ---------------------------------------------------------------- profile form (onboarding + edit) */
+/* ---------------------------------------------------------------- login */
+function renderLogin(){
+  return `<div class="screen col" style="justify-content:center;align-items:center;text-align:center;">
+    <div style="margin-bottom:20px;">${logoSVG(64)}</div>
+    <div class="serif" style="font-size:22px;margin-bottom:6px;">Sign in</div>
+    <p class="muted" style="font-size:13px;margin-bottom:24px;">Quick and secure — choose how you'd like to continue</p>
+
+    <button class="btn btn-ghost" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92a8.78 8.78 0 0 0 2.68-6.6z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26a5.41 5.41 0 0 1-3.04.85 5.43 5.43 0 0 1-5.1-3.74H.9v2.34A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.9 10.67a5.4 5.4 0 0 1 0-3.34V5H.9a9 9 0 0 0 0 8l3-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .9 5l3 2.33A5.43 5.43 0 0 1 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="row" style="gap:10px;margin:6px 0 14px;width:100%;">
+      <div style="flex:1;height:1px;background:var(--line);"></div>
+      <span class="muted" style="font-size:11px;">or</span>
+      <div style="flex:1;height:1px;background:var(--line);"></div>
+    </div>
+
+    ${state.loginStep!=="otp" ? `
+      <input id="login-phone" class="field" placeholder="+960 7XXXXXX" style="text-align:center;">
+      <div id="recaptcha-container"></div>
+      <button class="btn" onclick="sendOtp()">Send code</button>
+    ` : `
+      <p class="muted" style="font-size:12px;margin-bottom:10px;">Enter the code sent to your phone</p>
+      <input id="login-otp" class="field" placeholder="123456" style="text-align:center;letter-spacing:4px;">
+      <button class="btn" onclick="confirmOtp()">Verify &amp; continue</button>
+      <button onclick="state.loginStep='phone';render()" style="background:none;border:none;color:var(--muted);font-size:12px;margin-top:10px;text-decoration:underline;cursor:pointer;">Use a different number</button>
+    `}
+
+    <div id="login-error" class="muted" style="display:none;color:var(--danger);font-size:12px;margin-top:12px;"></div>
+  </div>`;
+}
+
+let recaptchaVerifier = null;
+function showLoginError(msg){
+  const el = document.getElementById('login-error');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+}
+function handleAuthSuccess(result){
+  const user = (result && result.user) || (auth && auth.currentUser);
+  if(!user){ showLoginError("Something went wrong signing in."); return; }
+  state.uid = user.uid;
+  if(!db){ state.phase = "onboarding"; render(); return; }
+  db.collection('users').doc(user.uid).get().then(docSnap=>{
+    if(docSnap.exists && docSnap.data().name){
+      state.me = {...state.me, ...docSnap.data()};
+      state.phase = "app";
+    } else {
+      state.phase = "onboarding";
+    }
+    render();
+  }).catch(()=>{ state.phase = "onboarding"; render(); });
+}
+function signInGoogle(){
+  if(!auth){ showLoginError("Firebase isn't configured yet — add your project keys."); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).then(handleAuthSuccess).catch(err=>showLoginError(err.message));
+}
+function sendOtp(){
+  if(!auth){ showLoginError("Firebase isn't configured yet — add your project keys."); return; }
+  const phoneInput = document.getElementById('login-phone');
+  let phone = (phoneInput.value || "").trim();
+  if(!phone){ showLoginError("Enter your phone number."); return; }
+  if(!phone.startsWith('+')) phone = '+960' + phone.replace(/^0+/, '');
+  try {
+    if(recaptchaVerifier){ recaptchaVerifier.clear(); recaptchaVerifier = null; }
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
+    auth.signInWithPhoneNumber(phone, recaptchaVerifier).then(result=>{
+      window.confirmationResult = result;
+      state.loginStep = "otp";
+      render();
+    }).catch(err=>showLoginError(err.message));
+  } catch(err){ showLoginError(err.message); }
+}
+function confirmOtp(){
+  const code = (document.getElementById('login-otp').value || "").trim();
+  if(!window.confirmationResult){ showLoginError("Request a new code."); return; }
+  window.confirmationResult.confirm(code).then(handleAuthSuccess).catch(()=>showLoginError("Incorrect code, try again."));
+}
+function signOutUser(){
+  if(auth) auth.signOut();
+  state = {
+    phase:"splash", tab:"discover", uid:null, loginStep:"phone",
+    activeProfileId:null, activeChatId:null, discoverIndex:0, likedIds:[],
+    checkout:{open:false, step:"select", tab:"tokens", plan:null, ref:""},
+    me:{ name:"", age:"", atoll:"", island:"", work:"", bio:"", gender:"", lookingFor:"",
+         status:"", intent:"", matchFactors:{}, lifestyle:{smoke:"",drink:"",party:""},
+         photoData:null, tokenBalance:30, subscription:"none" },
+  };
+  render();
+}
+
 function renderProfileForm({title, cta, mode}){
   const me = state.me;
   return `<div class="screen ${mode==='edit'?'with-nav':''}">
@@ -420,6 +559,7 @@ function renderProfileForm({title, cta, mode}){
 
     <div id="form-error"></div>
     <button class="btn" onclick="${mode==='onboarding' ? 'finishOnboarding()' : 'saveProfile()'}">${cta}</button>
+    ${mode==='edit' ? `<button onclick="signOutUser()" style="background:none;border:none;color:var(--muted);font-size:13px;margin-top:16px;text-decoration:underline;cursor:pointer;width:100%;">Sign out</button>` : ''}
   </div>`;
 }
 function handlePhoto(e){
@@ -431,6 +571,22 @@ function handlePhoto(e){
     render();
   };
   reader.readAsDataURL(file);
+
+  if(state.uid && storage){
+    storage.ref(`profile_photos/${state.uid}/profile.jpg`).put(file)
+      .then(snap => snap.ref.getDownloadURL())
+      .then(url => {
+        state.me.photoURL = url;
+        if(db) db.collection('users').doc(state.uid).set({ photoURL: url }, { merge: true });
+      })
+      .catch(err => console.error("Photo upload failed:", err));
+  }
+}
+function saveUserToFirestore(){
+  if(state.uid && db){
+    db.collection('users').doc(state.uid).set({ ...state.me, uid: state.uid }, { merge: true })
+      .catch(err => console.error("Failed to save profile:", err));
+  }
 }
 function finishOnboarding(){
   const { valid, missing, data } = validateProfileForm();
@@ -439,6 +595,7 @@ function finishOnboarding(){
   state.me = {...state.me, ...data};
   state.phase = "app"; state.tab = "discover";
   render();
+  saveUserToFirestore();
 }
 function saveProfile(){
   const { valid, missing, data } = validateProfileForm();
@@ -447,6 +604,7 @@ function saveProfile(){
   state.me = {...state.me, ...data};
   render();
   showToast("Saved ✓");
+  saveUserToFirestore();
 }
 
 /* ---------------------------------------------------------------- matching */
@@ -817,21 +975,37 @@ function co_submit(){
 }
 
 /* ---------------------------------------------------------------- bottom nav */
+const NAV_ITEMS = [
+  {id:"discover", icon:"heart", label:"Discover"},
+  {id:"chats", icon:"message", label:"Chats"},
+  {id:"wallet", icon:"wallet", label:"Wallet"},
+  {id:"profile", icon:"user", label:"Profile"},
+];
 function renderNav(){
-  const items = [
-    {id:"discover", icon:"heart", label:"Discover"},
-    {id:"chats", icon:"message", label:"Chats"},
-    {id:"wallet", icon:"wallet", label:"Wallet"},
-    {id:"profile", icon:"user", label:"Profile"},
-  ];
   return `<div class="nav">
-    ${items.map(it=>`
+    ${NAV_ITEMS.map(it=>`
       <button class="${state.tab===it.id?'active':''}" onclick="setTab('${it.id}')">
         ${ICONS[it.icon](20, state.tab===it.id?'var(--gold)':'var(--muted)')}
         <span>${it.label}</span>
       </button>
     `).join('')}
   </div>`;
+}
+function renderSidebar(){
+  if(state.phase!=="app" || state.activeChatId){
+    return '';
+  }
+  return `
+    <div class="row gap2" style="margin-bottom:32px;">${logoSVG(32)}${wordmark(18)}</div>
+    <div class="col" style="gap:4px;">
+      ${NAV_ITEMS.map(it=>`
+        <button class="sidebar-item ${state.tab===it.id?'active':''}" onclick="setTab('${it.id}')">
+          ${ICONS[it.icon](19, state.tab===it.id?'var(--gold)':'var(--muted)')}
+          <span>${it.label}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
 }
 function setTab(t){
   state.tab = t;
